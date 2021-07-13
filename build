@@ -1,0 +1,33 @@
+#!/bin/sh -e
+
+cd "$(dirname "$0")" || exit 1
+
+if [ -t 1 ]; then
+	: "${VERBOSITY:=info}"
+fi
+
+: "${STACK_YAML:=stack.yaml}"
+: "${VERBOSITY:=warn}"  # silent, error, warn, info, debug
+: "${FAST:=}"           # set non-empty for faster builds
+
+pkg="xmonad-configuration"
+bin="${XDG_DATA_HOME:-"$HOME"/.local/share}/xmonad"
+exe="xmonad-$(uname -m)-linux"
+
+case $1 in
+	''|--*) : ;;
+	*)
+		bin=$(dirname "$(realpath -ms "$1")")
+		exe=$(basename "$1")
+		shift
+		;;
+esac
+
+if ! [ -e "$STACK_YAML" ]; then
+	STACK_YAML=$(find . -maxdepth 1 -type f -name stack-\*.yaml -print -quit)
+fi
+
+set -x
+
+"${STACK_EXE-stack}" --no-terminal --color never --verbosity "$VERBOSITY" --install-ghc --local-bin-path "$bin" \
+	build --copy-bins --no-haddock --flag "$pkg:${FAST:+-}optimize" ${FAST:+--fast} "$pkg:exe:$exe" "$@"

@@ -1,0 +1,89 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           xmonad-configuration
+version:        0.16
+synopsis:       XMonad custumization
+build-type:     Simple
+
+flag optimize
+  description: Enable optimizations and LLVM
+  manual: True
+  default: False
+
+library
+  exposed-modules:
+      DesktopEntries
+      MyDebug
+      MyRun
+      MyTheme
+      MyXmobar
+      Scratchpads
+      SpawnOnByPPID
+      StatusBar.XMobar
+      XMonad.Config.CommandsKeysF
+      XMonad.Config.Solarized
+      XMonad.Hooks.EwmhDesktopsEx
+      XMonad.Layout.Hinted
+      XMonad.Prompt.Environ
+      XMonad.Prompt.Qutebrowser
+      XMonad.Util.DesktopNotifications
+      XMonad.Util.NamedCommands
+      XMonad.Util.NamedCommands.Orphans
+  other-modules:
+      Paths_xmonad_configuration
+  hs-source-dirs:
+      lib
+  ghc-options: -dynamic -pie -fPIC
+  build-depends:
+      X11
+    , base
+    , containers
+    , dbus
+    , directory
+    , filepath
+    , free
+    , multimap
+    , process
+    , random
+    , text
+    , unix
+    , utf8-string
+    , xdg-desktop-entry
+    , xmobar >=0.36
+    , xmonad >=0.15
+    , xmonad-contrib >=0.16
+  if flag(optimize)
+    ghc-options: -O2 -fllvm -fexpose-all-unfoldings -fspecialise-aggressively -fstatic-argument-transformation -funbox-strict-fields
+  default-language: Haskell2010
+
+executable xmonad-x86_64-linux
+  main-is: xmonad.hs
+  other-modules:
+      Paths_xmonad_configuration
+  ghc-options: -dynamic -pie -fPIC -threaded -rtsopts "-with-rtsopts=-N2 -G3 -c -qg1 -qn2 -M500M -A16M -K200M -kc8K -I0 -V0"
+  build-depends:
+      X11
+    , base
+    , containers
+    , dbus
+    , directory
+    , filepath
+    , free
+    , multimap
+    , process
+    , random
+    , text
+    , unix
+    , utf8-string
+    , xdg-desktop-entry
+    , xmobar >=0.36
+    , xmonad >=0.15
+    , xmonad-configuration
+    , xmonad-contrib >=0.16
+  if flag(optimize)
+    ghc-options: -O2 -fllvm -fexpose-all-unfoldings -fspecialise-aggressively -fstatic-argument-transformation -funbox-strict-fields
+  default-language: Haskell2010
