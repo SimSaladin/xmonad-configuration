@@ -166,14 +166,6 @@ import Data.Int (Int32)
 main :: IO ()
 main = xmonad configPrime
 
-myXMonad :: MonadIO m => [String] -> m ()
-myXMonad args = do
-  dir <- getXMonadDataDir
-  prog <- io System.Environment.getProgName
-  spawn $ program (dir </> prog) args
-  where
-    (>>) = (Control.Monad.>>)
-
 -- * Config
 
 configPrime :: _ => Prime l _
@@ -517,9 +509,12 @@ myRestartEventHook _                                             = mempty
 
 myRecompileRestart :: Bool -> Bool -> X ()
 myRecompileRestart rcFlag rsFlag = do
+  dirs <- io getDirectories
+  dir <- getXMonadDataDir
+  prog <- io System.Environment.getProgName
   Notify.notifyLastS "Recompiling..."
-  _p <- xfork $ whenM' (recompile rcFlag) $ when' rsFlag $ myXMonad ["--restart"]
-  --Notify.notifyLastS "Recompile success"
+  _p <- xfork $ whenM' (recompile dirs rcFlag) $ when' rsFlag $
+    spawn $ program (dir </> prog) ["--restart"]
   return ()
   where
     (>>) = (Control.Monad.>>)
@@ -586,7 +581,7 @@ removeNoVisibleWS =
 cycleRecentHiddenWS :: [KeySym] -> KeySym -> KeySym -> X ()
 cycleRecentHiddenWS =
   cycleWindowSets $ \wset ->
-    [W.view (W.tag ws) wset | ws <- W.hidden wset ++ [W.workspace (W.current wset)]]
+    [W.tag ws | ws <- W.hidden wset ++ [W.workspace (W.current wset)]]
 
 signalProcessBy :: Posix.Signal -> Window -> X ()
 signalProcessBy s w = runQuery pid w ?+ \p ->

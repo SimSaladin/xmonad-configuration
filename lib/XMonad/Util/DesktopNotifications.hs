@@ -108,7 +108,7 @@ data Note text = Note
   } deriving (Eq, Show)
 
 instance IsString text => Default (Note text) where
-  def = urgency 1 $! Note "xmonad" def "" "XMonad" "" def def def
+  def = urgency 1 $! Note "xmonad" def "" "XMonad" "" M.empty M.empty def
 
 instance IsString text => IsString (Note text) where
   fromString s = body (fromString s) def
