@@ -18,12 +18,12 @@ packages:
       size: 2485
     hackage: xmonad-0.17.0@sha256:fc90c8fa647390c68c902912a5a7417f04025dfe72f7de51b248217f7ca0d484,5533
 - original:
-    hackage: xmobar-0.37
+    hackage: xmobar-0.40@sha256:5d34881bc79c07734dd928651c0ff3e6d1614f18572d394e166fcf31c00560e5,13936
   completed:
     pantry-tree:
-      sha256: b110f67f00fdb59cd2a1988937eda1934889c3ba71d03823011df48791175ee5
-      size: 6479
-    hackage: xmobar-0.37@sha256:42cfb68788901364a1b4ddfdc213106e18851dda2575420e532ee31c4cce4e51,12020
+      sha256: 472af11c75a0abd07d85f5ab233ebea5402cf0061806c3b83f578f01050d6733
+      size: 8308
+    hackage: xmobar-0.40@sha256:5d34881bc79c07734dd928651c0ff3e6d1614f18572d394e166fcf31c00560e5,13936
 - original:
     hackage: iwlib-0.1.0@sha256:226e4582d6878166a172ff98c868e25c4ed478ab28ab493498e464b1fe19d39a,921
   completed:
