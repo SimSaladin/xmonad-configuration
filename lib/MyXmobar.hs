@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -8,6 +7,10 @@
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-unused-local-binds #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
+
+-- TODO: this interface does not allow launching bars in a new thread.
+{-# OPTIONS_GHC -Wno-deprecations #-}
+
 
 ------------------------------------------------------------------------------
 -- |
@@ -36,6 +39,7 @@ import           XMonad.Actions.CopyWindow     (wsContainingCopies)
 import           XMonad.Actions.WorkspaceNames (workspaceNamesPP)
 import qualified XMonad.Config.Prime           as Prime
 import qualified XMonad.Hooks.DynamicBars      as DBar
+import qualified XMonad.Hooks.StatusBar as SB
 import           XMonad.Hooks.DynamicLog
 import           XMonad.Hooks.ManageHelpers    (isInProperty)
 import           XMonad.Hooks.UrgencyHook      (readUrgents)
@@ -68,7 +72,23 @@ import           MyTheme
 import           StatusBar.XMobar
 import qualified Xmobar                        as XB
 
--- * Mine
+-- * New stuff
+
+myStatusBarsNew :: XConfig l -> XConfig l
+myStatusBarsNew = SB.dynamicSBs mkStatusBarConfig
+
+mkStatusBarConfig :: ScreenId -> IO SB.StatusBarConfig
+mkStatusBarConfig screenId = undefined
+
+askScreenRectangle :: ScreenId -> IO Rectangle
+askScreenRectangle (S sid) = do
+  screenInfo <- E.bracket (openDisplay "") closeDisplay getScreenInfo
+  let r:rs = drop sid screenInfo
+      rss  = take sid screenInfo
+  when (any (r `containedIn`) (rs ++ rss)) $ error "fuck you"
+  return r
+
+-- * Old stuff
 
 myStatusBars :: Prime.Prime l l
 myStatusBars =
@@ -77,6 +97,7 @@ myStatusBars =
   (Prime.startupHook     Prime.=+ myStatusBarsStartupHook) Prime.>>
   (Prime.handleEventHook Prime.=+ myStatusBarsEventHook)
 
+-- | Generate XMobar config
 myXBConfig :: ScreenId -> Rectangle -> Map.Map NamedLoggerId FilePath -> IO XB.Config
 myXBConfig (S sid) sr pipes = fromConfigB $
      modifyConfigB (\cfg -> cfg { XB.position = XB.OnScreen sid XB.Top })

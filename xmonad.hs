@@ -23,7 +23,7 @@
 -- |
 -- Module      : Main
 -- Description : XMonad configuration
--- Copyright   : (c) 2011-2020 Samuli Thomasson
+-- Copyright   : (c) 2011-2021 Samuli Thomasson
 -- License     : BSD-3
 --
 -- Maintainer  : Samuli Thomasson <samuli.thomasson@paivola.fi>
@@ -137,6 +137,7 @@ import           Data.Proxy
 import           Data.Ratio                          ((%))
 import qualified System.Environment
 import           System.Exit                         (exitSuccess)
+import           System.Directory                    (doesFileExist)
 import           System.FilePath                     ((</>))
 import qualified System.Posix                        as Posix
 import           Text.Printf                         (printf)
@@ -170,7 +171,7 @@ main = xmonad configPrime
 
 configPrime :: _ => Prime l _
 configPrime = do
-  terminal           =: "/home/sim/term"   -- XXX "urxvtc"
+  terminal           =: "my-terminal"
   borderWidth        =: 1
   focusedBorderColor =: colCyan
   normalBorderColor  =: colBase02
@@ -191,31 +192,77 @@ configPrime = do
   applyIO $ CF.addAll myShowKeys myCmds
 
   startupHook =+ (Notify.startupHook
+    <+> restoreWorkspaces
     <+> setEWMHDesktopGeometry
-    <+> EWMH.ewmhDesktopsStartup
-    <+> EWMH.fullscreenStartup
-    <+> ManageDocks.docksStartupHook
     <+> scratchpadsStartupHook myScratchpads)
 
   handleEventHook =+ myRestartEventHook
   handleEventHook =+ MyDebug.debugEventHook
-  handleEventHook =+ (docksEventHookExtra <+> ManageDocks.docksEventHook)
-  handleEventHook =+ EWMH.ewmhDesktopsEventHook -- Intercepts _NET_CURRENT_DESKTOP, _NET_WM_DESKTOP, _NET_ACTIVE_WINDOW
+
+  apply ManageDocks.docks
+  handleEventHook =+ docksEventHookExtra
+
   handleEventHook =+ FS.fullscreenEventHook
   handleEventHook =+ minimizeEventHook    -- Handle minimize/maximize requests
   handleEventHook =+ LayoutHints.hintsEventHook       -- Refreshes the layout whenever a window changes its hints.
 
   logHook =+ XMonad.Hooks.ManageDebug.manageDebugLogHook
-  logHook =+ EWMH.ewmhDesktopsLogHookCustom id
+  --logHook =+ EWMH.ewmhDesktopsLogHookCustom id
   logHook =+ myUpdatePointer (0.5, 0.5) (0.4, 0.4)
   logHook =+ wallpaperSetter myWallpaperConf
 
   urgencyHook Notify.urgencyHook
+
+  apply EWMH.ewmh
   where
     (>>) = (Arr.>>)
 
     urgencyHook :: (Urgency.UrgencyHook h, LayoutClass l Window) => h -> Prime l l
     urgencyHook = apply . flip Urgency.withUrgencyHookC Urgency.urgencyConfig { Urgency.suppressWhen = Urgency.Focused }
+
+restoreWorkspaces :: X ()
+restoreWorkspaces = do
+  dir <- asks (cacheDir . directories)
+  let file = dir </> "workspaces"
+  io $ putStrLn $ "File is: " ++ file
+  io (doesFileExist file) >>= \case
+    True  -> do
+      contents <- io (readFile file)
+      case readMaybe contents of
+        Nothing -> void $ trace "failed to read workspaces file"
+        Just (names :: [(String, String)]) -> do
+          getName <- WSNames.getWorkspaceNames'
+          forM_ names $ \(tag, name) ->
+            when (isNothing $ getName tag) $ WSNames.setWorkspaceName tag name
+    False -> return ()
+  where
+    (>>) = (Control.Monad.>>)
+
+-- TODO restore the number of workspaces too
+-- restoreWorkspaces :: XConfig l -> IO (XConfig l)
+-- restoreWorkspaces xc = do
+--   dir <- cacheDir <$> getDirectories
+--   let file = dir </> "workspaces"
+--   putStrLn $ "File is: " ++ file
+--   putStrLn $ "Current workspaces are: " ++ show (X.workspaces xc)
+--   doesFileExist file >>= \case
+--     True  -> do
+--       readMaybe <$> readFile file >>= \case
+--         Nothing -> trace "failed to read workspaces file" >> return xc
+--         Just ws -> return xc { X.workspaces = ws }
+--       return xc
+--     False -> return xc
+--   where
+--     (>>) = (Control.Monad.>>)
+
+saveWorkspaces :: X ()
+saveWorkspaces = do
+  dir <- asks (cacheDir . directories)
+  let file = dir </> "workspaces"
+  tags <- gets (W.workspaces . windowset)
+  getName <- WSNames.getWorkspaceNames'
+  let names = [ (W.tag t, fromMaybe (W.tag t) (getName $ W.tag t)) | t <- tags]
+  io $ writeFile file (show names)
 
 myScratchpads :: [Scratchpad]
 myScratchpads =
@@ -317,8 +364,9 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
 
   group "XMonad & X11" $ do
     "M-<F1>" `CF.key'` helpCmd
-    "M-<Return>" >+ spawnTerm def "" ? "Terminal"
-
+    -- Terminal
+    "M-<Return>"   >+ spawnTerm def "" ? "Terminal"
+    "M-S-<Return>" >+ FloatNext.floatNext True >> spawnTerm def "" ? "Terminal (floating)"
     -- TODO use constructs like this instead of WindowCmd etc. sum types.
     "M-S-c"      >+ cmdT @"Kill (1 copy) window (X.A.CopyWindow)" CW.kill1
     "M-r M-S-c"  >+ cmdT @"Signal process (SIGKILL) of focused window (_NET_WM_PID)" (withFocused (signalProcessBy Posix.sigKILL))
@@ -433,7 +481,9 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-f b"     >+ ToggleFocusedWindowBorder
     "M-f c"     >+ CenterWindow
     "M-f s"     >+ SinkWindow
+    "M-f S-s"   >+ SinkAll
     "M-f f"     >+ FloatWindow
+    "M-f S-f"   >+ ToggleFloatAllNew
     "M-f y"     >+ SwitchLayer
     "M-f h"     >+ pidPrompt xpConfig "SpawnOn/PPID" ?+ (\p -> wsPromptWithCurrent xpConfig "Shift to:" ?+ setManageByPPID p) ? "SpawnOn by Window PID"
 
@@ -451,8 +501,8 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-; M-"      >>+ tags >++> WorkspaceCopy
     "M-S-; "      >>+ tags >++> WorkspaceShiftTo
     "M-y"         >+ WorkspaceCycleRecentHidden
-    "M-S-n"       >+ WorkspaceSwapTo Next AnyWS
-    "M-S-p"       >+ WorkspaceSwapTo Prev AnyWS
+    "M-S-n"       >+ WorkspaceSwapTo Next CycleWS.anyWS
+    "M-S-p"       >+ WorkspaceSwapTo Prev CycleWS.anyWS
     "M-g r"       >+ WorkspaceSetNamePrompt
     "M-g n"       >+ WorkspaceAddPrompt
     "M-g d"       >+ WorkspaceRemoveFocused
@@ -509,10 +559,12 @@ myRestartEventHook _                                             = mempty
 
 myRecompileRestart :: Bool -> Bool -> X ()
 myRecompileRestart rcFlag rsFlag = do
+  saveWorkspaces
+  statefilename <- asks (stateFileName . directories)
   dirs <- io getDirectories
-  dir <- getXMonadDataDir
+  dir <- asks (dataDir . directories)
   prog <- io System.Environment.getProgName
-  Notify.notifyLastS "Recompiling..."
+  Notify.notifyLastS $ "Recompiling. State file is " ++ statefilename
   _p <- xfork $ whenM' (recompile dirs rcFlag) $ when' rsFlag $
     spawn $ program (dir </> prog) ["--restart"]
   return ()
@@ -521,7 +573,7 @@ myRecompileRestart rcFlag rsFlag = do
 
 myRestart :: X ()
 myRestart = do
-  dir  <- getXMonadDataDir
+  dir  <- asks (dataDir . directories)
   prog <- io System.Environment.getProgName
   let msg = printf "Restart (%s)..." prog
   trace msg
@@ -571,7 +623,11 @@ centerOnScreen' win =
            else FloatKeys.keysMoveWindowTo (x+round (w%2), y+round (h%2)) (0.5,0.5) win
 
 myShowKeys :: CF.ShowKeys
-myShowKeys ts xs = Notify.notify_ $ Notify.summary (unwords ("Keys":ts)) $ Notify.body ("<tt>" ++ unlines (showKm xs) ++ "</tt>") def
+myShowKeys ts xs = do
+  Notify.notify_ $ Notify.summary (unwords ("Keys":ts)) $ Notify.body ("<tt>" ++ unlines (showKm xs) ++ "</tt>") def
+  trace $ "Keys: " ++ unwords ("Keys":ts) ++ unlines (showKm xs)
+  where
+    (>>) = (Control.Monad.>>)
 
 removeNoVisibleWS :: X ()
 removeNoVisibleWS =
@@ -730,6 +786,7 @@ data SetLayoutCmd = ResetLayout
 
 data MyFloatCmd = CenterWindow
                 | SinkWindow
+                | SinkAll
                 | FloatWindow
                 | SwitchLayer
                 | SnapMove   Direction2D (Maybe Int)
@@ -793,7 +850,7 @@ instance IsCmd WorkspaceCmd where
   command WorkspaceCycleRecentHidden = cycleRecentHiddenWS [xK_Super_L, xK_Alt_L] xK_y xK_p ? "Cycle (focus) recent tags"
   -- TODO DynWS + WSNames
   command WorkspaceAddPrompt     = wsPromptNew' "Add tag: " ?+ DynWS.addWorkspace ? "New tag (XP)"
-  command WorkspaceSetNamePrompt = wsPromptNew' "Rename tag: " ?+ WSNames.setCurrentWorkspaceName ? "Rename this tag (XP)"
+  command WorkspaceSetNamePrompt = wsPromptNew' "Rename tag: " ?+ (\name -> WSNames.setCurrentWorkspaceName name Control.Monad.>> saveWorkspaces) ? "Rename this tag (XP)"
   command WorkspaceRemoveFocused = removeNoVisibleWS ? "Remove this tag (if empty)"
   command (WorkspaceSwapTo d _)  = WSNames.swapTo d ? printf "Shift current tag %s" (if d == Next then "forward" else "backwards")
   command (FocusScreenIn Next)   = CycleWS.nextScreen ? "Focus next screen"
@@ -810,10 +867,11 @@ instance IsCmd SetLayoutCmd where
 instance IsCmd MyFloatCmd where
   command CenterWindow      = withFocused centerOnScreen'             ? "Place focused (center)"
   command SinkWindow        = withFocused (windows . W.sink)          ? "Sink focused"
+  command SinkAll           = windows (\w -> foldr W.sink w (W.allWindows w))          ? "Sink all windows"
   command FloatWindow       = withFocused (\w -> windows . W.float w . snd =<< floatLocation w)         ? "Float focused"
   command SwitchLayer       = Navigation2D.switchLayer                ? "Switch Layer (Nav2D)"
   command PlaceSimpleSmart  = placeFocused simpleSmart                ? "Place focused (simpleSmart)"
-  command ToggleFloatAllNew = FloatNext.toggleFloatAllNew             ? "Float new windows (toggle)"
+  command ToggleFloatAllNew = myToggleFloatAllNew             ? "Float new windows (toggle)"
   command (SnapMove   d2 p) = withFocused (FloatSnap.snapMove   d2 p) ? printf "Move %s (FloatSnap)" (show d2)
   command (SnapGrow   d2 p) = withFocused (FloatSnap.snapGrow   d2 p) ? printf "Grow %s (FloatSnap)" (show d2)
   command (SnapShrink d2 p) = withFocused (FloatSnap.snapShrink d2 p) ? printf "Shrink %s (FloatSnap)" (show d2)
@@ -889,3 +947,15 @@ moveWindowPerStrutPartial w = do
       when (b > 0) $ io $ moveWindow d w bx1 (fi (wa_height rwa) - b)
 
     move' rwa _ _ = return ()
+
+myToggleFloatAllNew = do
+  FloatNext.toggleFloatAllNew
+  next <- FloatNext.willFloatNext
+  new <- FloatNext.willFloatAllNew
+  Notify.notifyLastS $ if new
+    then "Float hook: float all new windows"
+    else if next
+    then "Float hook: float next window"
+    else "Float hook: inactive"
+  where
+    (>>) = (Control.Monad.>>)

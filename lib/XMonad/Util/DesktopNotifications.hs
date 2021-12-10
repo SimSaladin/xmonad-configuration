@@ -253,7 +253,7 @@ toVariants Note{..} =
 -- | Establish Dbus connection.
 startupHook :: X ()
 startupHook = do
-  xdir <- X.getXMonadDir
+  xdir <- X.asks (X.cfgDir . X.directories)
   icon <-
     let f = (xdir <> "/xmonad.svg")
      in X.io (doesFileExist f) >>= \case

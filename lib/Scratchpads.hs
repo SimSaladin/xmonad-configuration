@@ -1,17 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE RecordWildCards #-}
-
-
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 ------------------------------------------------------------------------------
 -- |
 -- Module      : Scratchpads
--- Copyright   : (c) Samuli Thomasson, 2019
+-- Copyright   : (c) Samuli Thomasson, 2019-2021
 -- License     : BSD-3
 --
 -- Maintainer  : Samuli Thomasson <samuli.thomasson@paivola.fi>
@@ -84,7 +80,7 @@ cyclePads = (? "Toggle next scratchpad (cyclic)") $ do
       catMaybes <$> mapM (runQuery xpad) (W.allWindows wset)
     let pads = [pad | pad <- padsAll, any ((==) (spName pad) . spName) padsExist]
     res <- withFocii $ \_ w ->
-      fmap (\x -> drop 1 . dropWhile ((/=) (spName x) . spName)) <$> (runQuery xpad w)
+      fmap (\x -> drop 1 . dropWhile ((/=) (spName x) . spName)) <$> runQuery xpad w
     case fromMaybe id res pads of
       npad:_ -> togglePadNoCreate (spName npad)
       _      -> minimizeScratchpads pads
@@ -92,7 +88,7 @@ cyclePads = (? "Toggle next scratchpad (cyclic)") $ do
 
 togglePad name = (? printf "Toggle scratchpad %s" name) $ do toggleScratchpad True name
 -- | Don't create if missing
-togglePadNoCreate name = toggleScratchpad False name
+togglePadNoCreate = toggleScratchpad False
 
 dynUpdateFocusedWindow :: ScratchpadId -> "Set ad-hoc scratchpad with focused window" :? X ()
 dynUpdateFocusedWindow k = cmdT $ dynPadToggleFocused k
