@@ -2,15 +2,7 @@
 
 cd "$(dirname "$0")" || exit 1
 
-#if [ -t 1 ]; then
-#	: "${VERBOSITY:=info}"
-#fi
-#: "${STACK_YAML:=stack.yaml}"
-#: "${VERBOSITY:=warn}"  # silent, error, warn, info, debug
-#: "${FAST:=}"           # set non-empty for faster builds
-#: "${WITH_LLVM:=}"      # set non-empty to use LLVM
-
-#pkg="xmonad-configuration"
+attr=xmonad-x86_64-linux
 bin="${XDG_DATA_HOME:-"$HOME"/.local/share}/xmonad"
 exe="xmonad-$(uname -m)-linux"
 
@@ -23,21 +15,14 @@ case $1 in
 		;;
 esac
 
-echo "Building: $bin/$exe"
-
-# Nix build
-attr=xmonad-x86_64-linux
-#nix-build -A stack-nix.passthru.updateMaterialized | bash
-nix-build -A "$attr" -o "$attr"
-ln -nsf "$(realpath -e "$attr/bin/xmonad-x86_64-linux")" "$bin/$exe"
-ln -nsf "$(realpath -e "$attr/bin/xmonad-x86_64-linux")" ~/.cache/xmonad/"$exe"
-
-# Stack build
-#if ! [ -e "$STACK_YAML" ]; then
-#	STACK_YAML=$(find . -maxdepth 1 -type f -name stack-\*.yaml -print -quit)
-#fi
-#
-#set -x
-#
-#"${STACK_EXE-stack}" --no-terminal --color never --verbosity "$VERBOSITY" --install-ghc --local-bin-path "$bin" \
-#	build --copy-bins --no-haddock --flag "$pkg:${FAST:+-}optimize" ${FAST:+--fast} --flag "$pkg:${WITH_LLVM:+-}via-llvm" "$pkg:exe:$exe" "$@"
+if flock -n -E 6 . nix-build -A "$attr" -o "$attr"; then
+	# To update materialized nix
+	#nix-build -A stack-nix.passthru.updateMaterialized | bash
+	echo "Building: $bin/$exe"
+	ln -nsf "$(realpath -e "$attr/bin/xmonad-x86_64-linux")" "$bin/$exe"
+	ln -nsf "$(realpath -e "$attr/bin/xmonad-x86_64-linux")" ~/.cache/xmonad/"$exe"
+elif [ $? = 6 ]; then
+	echo "Failed to get lock on $(realpath .). Build already running probably. Waiting 5 minutes for it to finish."
+	flock --verbose -w 300 . sleep 0.3
+	echo "Build finished."
+fi

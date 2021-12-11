@@ -39,7 +39,10 @@ executables:
     ghc-options:
     - -threaded
     - -rtsopts
-    - '"-with-rtsopts=-maxN4 -G3 -c -qg1 -qn2 -A8M -K64M -M1G -kc8k"'
+    - '"-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"'
+    when:
+    - condition: flag(via-llvm)
+      ghc-options: -fllvm
 
 dependencies:
 - base
@@ -76,5 +79,3 @@ when:
       - -funbox-strict-fields
   else:
     ghc-options: -O0
-- condition: flag(via-llvm)
-  ghc-options: -fllvm
