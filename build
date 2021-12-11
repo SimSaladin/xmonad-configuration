@@ -15,12 +15,15 @@ case $1 in
 		;;
 esac
 
-if flock -n -E 6 . nix-build -A "$attr" -o "$attr"; then
+out=$attr
+if flock -n -E 6 . nix-build -A "$attr" -o "$out"; then
+#if nix-build -A "$attr" -o "$out"; then
+#if true; then
 	# To update materialized nix
 	#nix-build -A stack-nix.passthru.updateMaterialized | bash
-	echo "Building: $bin/$exe"
-	ln -nsf "$(realpath -e "$attr/bin/xmonad-x86_64-linux")" "$bin/$exe"
-	ln -nsf "$(realpath -e "$attr/bin/xmonad-x86_64-linux")" ~/.cache/xmonad/"$exe"
+	echo "Built $attr ($out). Installing to $bin/$exe"
+	ln -nsf "$(realpath -e "$out/bin/xmonad-x86_64-linux")" "$bin/$exe"
+	ln -nsf "$(realpath -e "$out/bin/xmonad-x86_64-linux")" ~/.cache/xmonad/"$exe"
 elif [ $? = 6 ]; then
 	echo "Failed to get lock on $(realpath .). Build already running probably. Waiting 5 minutes for it to finish."
 	flock --verbose -w 300 . sleep 0.3
