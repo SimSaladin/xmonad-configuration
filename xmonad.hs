@@ -188,7 +188,11 @@ configPrime = do
   manageHook =+ (FS.fullscreenManageHook <+> SpawnOn.manageSpawn <+> FloatNext.floatNextHook)
 
   myLayout
-  MyXmobar.myStatusBars -- adds: logHook, startupHook, handleEventHook
+
+  apply $ MyXmobar.myStatusBars . ManageDocks.docks
+
+  handleEventHook =+ docksEventHookExtra
+
   applyIO $ CF.addAll myShowKeys myCmds
 
   startupHook =+ (Notify.startupHook
@@ -198,9 +202,6 @@ configPrime = do
 
   handleEventHook =+ myRestartEventHook
   handleEventHook =+ MyDebug.debugEventHook
-
-  apply ManageDocks.docks
-  handleEventHook =+ docksEventHookExtra
 
   handleEventHook =+ FS.fullscreenEventHook
   handleEventHook =+ minimizeEventHook    -- Handle minimize/maximize requests

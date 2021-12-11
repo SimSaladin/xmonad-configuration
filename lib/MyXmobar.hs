@@ -7,11 +7,6 @@
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-unused-local-binds #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
-
--- TODO: this interface does not allow launching bars in a new thread.
-{-# OPTIONS_GHC -Wno-deprecations #-}
-
-
 ------------------------------------------------------------------------------
 -- |
 -- Module      : MyXmobar
@@ -29,7 +24,6 @@
 module MyXmobar
   ( myStatusBars
   , exitHook
-  , sendWakeup
   ) where
 
 import           XMonad                        hiding (spawn, title)
@@ -37,13 +31,10 @@ import qualified XMonad.StackSet               as W
 
 import           XMonad.Actions.CopyWindow     (wsContainingCopies)
 import           XMonad.Actions.WorkspaceNames (workspaceNamesPP)
-import qualified XMonad.Config.Prime           as Prime
-import qualified XMonad.Hooks.DynamicBars      as DBar
-import qualified XMonad.Hooks.StatusBar as SB
-import           XMonad.Hooks.DynamicLog
+import qualified XMonad.Hooks.StatusBar        as SB
+import           XMonad.Hooks.StatusBar.PP     (dynamicLogString, PP(..), wrap, pad, xmobarRaw, shorten)
 import           XMonad.Hooks.ManageHelpers    (isInProperty)
 import           XMonad.Hooks.UrgencyHook      (readUrgents)
-import           XMonad.Layout.LayoutModifier
 import qualified XMonad.Util.ExtensibleState   as XS
 import           XMonad.Util.Loggers
 import           XMonad.Util.PureX
@@ -74,28 +65,30 @@ import qualified Xmobar                        as XB
 
 -- * New stuff
 
-myStatusBarsNew :: XConfig l -> XConfig l
-myStatusBarsNew = SB.dynamicSBs mkStatusBarConfig
+myStatusBars :: XConfig l -> XConfig l
+myStatusBars = SB.dynamicSBs mkStatusBarConfig
+  -- TODO: add this log hook only once:
+  -- namedLoggersLogHook myFocusedPP
 
 mkStatusBarConfig :: ScreenId -> IO SB.StatusBarConfig
-mkStatusBarConfig screenId = undefined
+mkStatusBarConfig screenId = do
+  res <- myStatusBar screenId
+  case res of
+    Just h -> return def
+      { SB.sbLogHook = do
+        when (screenId == S 0) $ namedLoggersLogHook myFocusedPP -- XXX hacky
+        current <- curScreenId
+        let thisPP = if current == screenId then myFocusedPP else myUnfocusedPP
+        str <- run thisPP
+        void $ userCode $ io $ hPutStrLn h str
+      , SB.sbStartupHook = trace $ "Started status bar for screen: " ++ show screenId
+      , SB.sbCleanupHook = void $ io $ partialCleanup screenId
+      }
+    Nothing -> return def
+  where
+    run = workspaceNamesPP >=> dynamicLogString
 
-askScreenRectangle :: ScreenId -> IO Rectangle
-askScreenRectangle (S sid) = do
-  screenInfo <- E.bracket (openDisplay "") closeDisplay getScreenInfo
-  let r:rs = drop sid screenInfo
-      rss  = take sid screenInfo
-  when (any (r `containedIn`) (rs ++ rss)) $ error "fuck you"
-  return r
-
--- * Old stuff
-
-myStatusBars :: Prime.Prime l l
-myStatusBars =
-  (Prime.logHook         Prime.=+ namedLoggersLogHook myFocusedPP) Prime.>>
-  (Prime.logHook         Prime.=+ myStatusBarsLogHook) Prime.>>
-  (Prime.startupHook     Prime.=+ myStatusBarsStartupHook) Prime.>>
-  (Prime.handleEventHook Prime.=+ myStatusBarsEventHook)
+-- * XMobar Config
 
 -- | Generate XMobar config
 myXBConfig :: ScreenId -> Rectangle -> Map.Map NamedLoggerId FilePath -> IO XB.Config
@@ -285,6 +278,8 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       , monExtraArgs = ["-O", fg colGreen "AC" <> " ", "-i", "", "-o", ""]
       }
 
+-- * PP
+
 myFocusedPP :: PP
 myFocusedPP = def
   { ppUrgent          = fg colGreen
@@ -292,7 +287,7 @@ myFocusedPP = def
   , ppCurrent         = fg colMagenta
   , ppHidden          = fg colBase1
   , ppHiddenNoWindows = fg colBase01
-  , ppLayout          = \s -> last (words s)
+  , ppLayout          = last . words
   , ppTitle           = xmobarFont 1 . pad . fg colBase1 . xmobarRaw . shorten 128
   , ppRename          = \s w -> maybe "" (\k -> fg colYellow $ k ++ ":") (Map.lookup (W.tag w) ppTagKeys) ++ s
   , ppOrder           = \(ws : layout : title : xs) -> ws : layout : xs
@@ -303,20 +298,9 @@ myFocusedPP = def
 
 myUnfocusedPP = myFocusedPP { ppCurrent = fg colBlue }
 
--- XXX error handling necessary! multiPPFormat does not handle broken Handles!
-myStatusBarsLogHook :: X ()
-myStatusBarsLogHook = void $ userCode $ DBar.multiPPFormat run myFocusedPP myUnfocusedPP
-  where
-    run = workspaceNamesPP >=> dynamicLogString
-
-myStatusBarsStartupHook ::  X ()
-myStatusBarsStartupHook = DBar.dynStatusBarStartup' myStatusBar partialCleanup
-
-myStatusBarsEventHook :: Event -> X All
-myStatusBarsEventHook = DBar.dynStatusBarEventHook' myStatusBar partialCleanup
-
 exitHook :: X ()
 exitHook = cleanupNamedLoggers >> io cleanup
+-- XXX the "cleanup" is likely unnecessary. X.H.StatusBar should take care of that.
 
 -- * Named Loggers
 
@@ -379,21 +363,21 @@ namedLoggersLogHook pp = do
   namedLogLazy NLogTitle  (ppTitle pp  `onLogger` logTitle)
   namedLogLazy NLogLayout logLayout
 
--- * Dynamic Statusbars Extras
+-- * Hacky StatusBar processes
 
 -- To keep track of status bars that execute as child processes.
 sbarHackRef :: IORef [(ScreenId, ProcessID)]
 sbarHackRef = unsafePerformIO (newIORef mempty)
 {-# NOINLINE sbarHackRef #-}
 
-myStatusBar :: DBar.DynamicStatusBar -- ScreenId -> IO Handle
+myStatusBar :: ScreenId -> IO (Maybe Handle)
 myStatusBar screen@(S sid) = do
   screenInfo <- E.bracket (openDisplay "") closeDisplay getScreenInfo
   let r:rs = drop sid screenInfo
       rss  = take sid screenInfo
   if any (r `containedIn`) (rs ++ rss)
-     then IO.openFile "/dev/null" IO.WriteMode
-     else do
+     then return Nothing
+     else fmap Just $ do
        sb@(h,pID) <- myStatusBar' r
        atomicModifyIORef sbarHackRef $ \xs -> ((screen, pID) : xs, h)
     where
@@ -409,10 +393,10 @@ myStatusBar screen@(S sid) = do
 
       printFd = printf "/dev/fd/%i" . fromEnum
 
-cleanup :: DBar.DynamicStatusBarCleanup
+cleanup :: IO ()
 cleanup = readIORef sbarHackRef >>= mapM_ (destroy . snd)
 
-partialCleanup :: DBar.DynamicStatusBarPartialCleanup
+partialCleanup :: ScreenId -> IO ()
 partialCleanup sid = readIORef sbarHackRef >>= mapM_ destroy . lookup sid
 
 destroy :: ProcessID -> IO ()
@@ -420,7 +404,7 @@ destroy pId = void $ do
   catchIO $ void $ Posix.signalProcess Posix.sigTERM pId
   catchIO $ void $ Posix.getProcessStatus True False pId
 
--- * Misc.
+-- * TODO
 
 {-
  - TODO since X.H.StatusBar{,.PP} refactoring:
@@ -436,4 +420,12 @@ ppCopies = fg colYellow
 
  isHidden :: Query Bool
  isHidden = isInProperty "_NET_WM_STATE" "_NET_WM_STATE_HIDDEN"
+
+askScreenRectangle :: ScreenId -> IO Rectangle
+askScreenRectangle (S sid) = do
+  screenInfo <- E.bracket (openDisplay "") closeDisplay getScreenInfo
+  let r:rs = drop sid screenInfo
+      rss  = take sid screenInfo
+  when (any (r `containedIn`) (rs ++ rss)) $ error "fuck you"
+  return r
  -}
