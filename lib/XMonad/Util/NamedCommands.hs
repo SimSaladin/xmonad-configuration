@@ -2,13 +2,10 @@
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DefaultSignatures         #-}
-{-# LANGUAGE DeriveDataTypeable        #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE StandaloneDeriving        #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE RankNTypes #-}
@@ -150,7 +147,7 @@ instance forall name p. (KnownSymbol name, Typeable p) => IsCmd (name :? (p -> X
   -- TODO should be illegal
   command (CmdX _) = error "IsCmd.command: CmdX"
   command (CmdParamX f g p) = f p ? printf (symbolVal (Proxy :: Proxy name)) (g p)
-  describeType _ = (symbolVal (Proxy :: Proxy name))
+  describeType _ = symbolVal (Proxy :: Proxy name)
   cmdEnum _ = []
 
 -- ** Smart constructors
@@ -171,11 +168,11 @@ cmdT1 = CmdParamX
 
 -- | The ""sendmessage"" function.
 msgT :: (Message msg, Show msg) => msg -> NamedAction
-msgT msg = (NA.sendMessage' msg)
+msgT = NA.sendMessage'
 
 -- * TODO
 
-data SendMessage msg = SendMessage !msg deriving Show
+newtype SendMessage msg = SendMessage msg deriving Show
 
 instance (Show a, Message a, Data a) => IsCmd (SendMessage a) where
   command (SendMessage a) = NA.sendMessage' a
@@ -193,7 +190,7 @@ instance (IsCmd c, IsCmd d) => IsCmd (c :>> d) where
 
 
 -- | Named command group (list). @ type LayoutBSPCmd = "BSP" :?? '[BSP.Rotate, BSP.Swap, BSP.ResizeDirectional, BSP.TreeRotate, BSP.TreeBalance, BSP.FocusParent, BSP.SelectMoveNode] @
-data (name :: Symbol) :?? (commands :: [Type]) = CmdL SomeCmd
+newtype (name :: Symbol) :?? (commands :: [Type]) = CmdL SomeCmd
 instance Show (s :?? cl) where
   show (CmdL s) = show s
 instance forall name. KnownSymbol name => IsCmd (name :?? '[]) where

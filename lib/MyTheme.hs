@@ -104,7 +104,7 @@ gsconfig1 = def
 
 xpConfig :: XP.XPConfig
 xpConfig = def
-  { XP.font                = show (font2) --  18)
+  { XP.font                = show font2
   , XP.bgColor             = colBase03
   , XP.fgColor             = colBase1
   , XP.fgHLight            = colMagenta

@@ -24,16 +24,19 @@
 
 module XMonad.Util.DesktopNotifications where
 
-import           Prelude
+import           XMonad.Prelude
+import           XMonad                      (Default(..), ExtensionClass(..), MonadIO(liftIO), X)
+import qualified XMonad                      as X
+import qualified XMonad.StackSet             as W
+import qualified XMonad.Util.ExtensibleState as XS
+import qualified XMonad.Util.NamedWindows    as NW
 
 import           Control.Concurrent          (forkIO)
 import qualified Control.Concurrent.MVar     as MVar
 import qualified Control.Exception           as E
-import           Control.Monad
 
 import           Data.Int                    (Int32)
 import qualified Data.Map                    as M
-import           Data.Maybe                  (isNothing)
 import           Data.String                 (IsString(..))
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
@@ -49,12 +52,6 @@ import           System.Timeout              (timeout)
 
 import           DBus                        hiding (Type)
 import qualified DBus.Client                 as C
-
-import           XMonad                      (Default(..), ExtensionClass(..), MonadIO(liftIO), X)
-import qualified XMonad                      as X
-import qualified XMonad.StackSet             as W
-import qualified XMonad.Util.ExtensibleState as XS
-import qualified XMonad.Util.NamedWindows    as NW
 
 -- $bodyMarkup
 --
@@ -176,12 +173,12 @@ instance IsVariant Markup where
   fromVariant = fmap MRaw . fromVariant
 
 markupToText :: Markup -> TL.Text
-markupToText mup = go mup where
+markupToText = go where
   go (MRaw text)             = TL.fromStrict text
   go (MLit text)             = TL.concatMap entities (TL.fromStrict text)
   go (MTag tag attrs minner) = "<" <> TL.fromStrict tag <> toAttrs attrs <> maybe "/>" (\inner -> ">" <> go inner <> "</" <> TL.fromStrict tag <> ">") minner
   go (MAppend ma mb)         = go ma <> go mb
-  go (MEmpty)                = mempty
+  go MEmpty                  = mempty
 
   toAttrs xs = TL.concat [ " " <> TL.fromStrict a <> "=\"" <> TL.concatMap entities (TL.fromStrict v) <> "\"" |(a,v) <- xs]
 
@@ -210,7 +207,7 @@ img src alt = MTag "img" [("src",src),("alt",alt)] Nothing
 notify :: IsVariant text => Note text -> X NotifyId
 notify nt = do
   xmIcon <- XS.gets xmonadIcon
-  withDBusClient $ notify' nt{notify_app_icon=maybe "" id xmIcon}
+  withDBusClient $ notify' nt{notify_app_icon = fromMaybe "" xmIcon}
 
 notify_ :: IsVariant text => Note text -> X ()
 notify_ = void . notify
@@ -346,19 +343,19 @@ addHandler client member go = C.addMatch client rule (go . signalBody)
 -- * Notifications
 
 summary :: text -> Note text -> Note text
-summary s = \nt -> nt { notify_summary = s }
+summary s nt = nt { notify_summary = s }
 
 body :: body -> Note body -> Note body
-body b = \nt -> nt { notify_body = b }
+body b nt = nt { notify_body = b }
 
 -- ** Hints
 
 -- | General hints. @myHint = hintF "hint-name" hintValue@
 hintF :: IsVariant hint => Text -> hint -> Note body -> Note body
-hintF k v = \nt -> nt { notify_hints = M.alter (\_ -> Just $ toVariant v) k $ notify_hints nt }
+hintF k v nt = nt { notify_hints = M.alter (\_ -> Just $ toVariant v) k $ notify_hints nt }
 
 appName :: Text -> Notify -> Notify
-appName name = \nt -> nt { notify_app_name = name }
+appName name nt = nt { notify_app_name = name }
 
 -- | The server might display notifications of different categories
 -- differently. Notification categories are semi-standardized, see the
@@ -371,7 +368,7 @@ category :: String -> Notify -> Notify
 category = hintF "category"
 
 replaces :: NotifyId -> Notify -> Notify
-replaces nid = \nt -> nt { notify_replaces_id = nid }
+replaces nid nt = nt { notify_replaces_id = nid }
 
 -- | This field can be used to specify the calling application's desktop
 -- entry, which might be used to for example find out an app icon to display
@@ -444,7 +441,7 @@ actionIcons :: Notify -> Notify
 actionIcons = hintF "action-icons" True
 
 appIcon :: String -> Notify -> Notify
-appIcon icon = \nt -> nt { notify_app_icon = icon }
+appIcon icon nt = nt { notify_app_icon = icon }
 
 -- | Display image given by path to local file.
 --
@@ -474,7 +471,7 @@ imagePath path = hintF "image-path" ("file://" ++ path)
 -- If the notification server supports it (capability @body-images@), you
 -- could opt to use the @<img src="..." alt="..." />@ body markup instead.
 imageData :: ImageData -> Notify -> Notify
-imageData img_ = hintF "image-data" img_
+imageData = hintF "image-data"
 
 -- | The image must be given in the data structure of dbus signature @(iiibiiay)@, e.g. RAW.
 -- Respectively width, height, rowstride, has alpha, bits per sample, channels, image data.
@@ -492,7 +489,7 @@ imageDataSignature = "(iiibiiay)"
 --
 -- Hint @sound-file@
 soundFile :: String -> Notify -> Notify
-soundFile path = hintF "sound-file" path
+soundFile = hintF "sound-file"
 
 -- | Play sound given by themeable sound name. See reference for names.
 --
@@ -500,7 +497,7 @@ soundFile path = hintF "sound-file" path
 --
 -- Hint @sound-name@
 soundName :: String -> Notify -> Notify
-soundName name = hintF "sound-name" name
+soundName = hintF "sound-name"
 
 -- | Hint @suppress-sound@
 suppressSound :: Notify -> Notify

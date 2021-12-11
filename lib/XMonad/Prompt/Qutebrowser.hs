@@ -44,10 +44,10 @@ qutebrowserP xpc nm = io (qutebrowserCompl xpc) >>= XP.Input.inputPromptWithComp
 
 -- qutebrowserCompl :: IO (String -> IO [String])
 qutebrowserCompl xpc =
-  System.Directory.getXdgDirectory System.Directory.XdgData "qutebrowser" >>=
-    Control.Exception.try . System.Directory.listDirectory >>=
-      either @IOError (\e -> trace (show e) $> []) (pure . f) >>=
-        pure . XP.mkComplFunFromList' xpc
+  XP.mkComplFunFromList' xpc <$>
+    (System.Directory.getXdgDirectory System.Directory.XdgData "qutebrowser" >>=
+      Control.Exception.try . System.Directory.listDirectory >>=
+        either @IOError (\e -> trace (show e) $> []) (pure . f))
   where
     f = filter $ \x -> not
       $ ("-qutebrowser" `List.isSuffixOf` x)

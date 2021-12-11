@@ -29,6 +29,7 @@ module XMonad.Config.CommandsKeysF
    module XMonad.Config.CommandsKeysF -- TODO
   ) where
 
+import           XMonad.Prelude
 import           XMonad
 import qualified XMonad.Util.EZConfig      as EZ
 import           XMonad.Util.NamedActions  (NamedAction)
@@ -38,15 +39,10 @@ import qualified XMonad.Prompt as XP
 
 import           XMonad.Util.NamedCommands
 
-import           Control.Applicative
 import           Control.Monad.Fix
 import           Control.Monad.Free
 import           Control.Arrow (second)
-import           Data.Char                 (isSpace)
 import           Data.Either               (lefts)
-import           Data.Foldable
-import           Data.Function             (on)
-import           Data.List                 (union)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as M
 import           Data.Tree
@@ -201,9 +197,6 @@ toKeys depth showKeys klist xc = go depth [] [(k,(g,command c))|(g,(k,c))<-klist
 
 -- * The configuration EDSL
 
-mod :: KeyMask -> Cmd l () -> Cmd l ()
-mod modm x = undefined modm x
-
 modDef :: (KeyMask -> Cmd l ()) -> Cmd l ()
 modDef f = liftF (CurrentModMask id) >>= f
 
@@ -244,7 +237,7 @@ withXConfig f = liftF (WithXConfig f)
 -- @
 -- Same as 'key'.
 (>+) :: IsCmd a => EZKey -> a -> Cmd l ()
-(>+) k cmd = key k cmd >> return ()
+(>+) k cmd = void (key k cmd)
 
 -- Same as 'btn'.
 (/+) :: IsCmd a => (ButtonMask, Button) -> (Window -> a) -> Cmd l ()

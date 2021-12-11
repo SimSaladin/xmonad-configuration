@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeApplications #-}
 ------------------------------------------------------------------------------
 -- |
@@ -18,17 +17,15 @@
 module SpawnOnByPPID where
 
 import XMonad
+import XMonad.Prelude
 import XMonad.Hooks.ManageHelpers
 import qualified XMonad.Actions.SpawnOn              as SpawnOn
 import qualified XMonad.Prompt                       as XP
-import Data.Maybe
-import           Data.Char
---import           Text.Printf                         (printf)
-import Data.Monoid
 import           XMonad.Util.PureX
 import MyRun
 
 data PIDPrompt = PIDPrompt
+
 instance XP.XPrompt PIDPrompt where
   showXPrompt PIDPrompt = "PID> "
   nextCompletion _ = \s -> XP.getNextCompletion s . map (unwords . take 1 . words)
