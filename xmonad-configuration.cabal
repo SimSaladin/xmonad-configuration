@@ -1,4 +1,4 @@
-cabal-version: 1.12
+cabal-version: 1.18
 
 -- This file has been generated from package.yaml by hpack version 0.34.5.
 --
@@ -15,6 +15,13 @@ author:         Samuli Thomasson
 maintainer:     samuli.thomasson@pm.me
 license:        BSD3
 build-type:     Simple
+extra-source-files:
+    default.nix
+    stack.yaml
+    stack.yaml.lock
+    build
+extra-doc-files:
+    README.md
 data-files:
     xmonad.svg
 
@@ -74,15 +81,15 @@ library
     , xmonad-contrib >=0.17
   if flag(optimize)
     ghc-options: -O2 -fexpose-all-unfoldings -fspecialise-aggressively -fstatic-argument-transformation -funbox-strict-fields
-  if flag(via-llvm)
-    ghc-options: -fllvm
+  else
+    ghc-options: -O0
   default-language: Haskell2010
 
 executable xmonad-x86_64-linux
   main-is: xmonad.hs
   other-modules:
       Paths_xmonad_configuration
-  ghc-options: -dynamic -pie -fPIC -threaded -rtsopts "-with-rtsopts=-N2 -G3 -c -qg1 -qn2 -M500M -A16M -K200M -kc8K -I0 -V0"
+  ghc-options: -dynamic -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -G3 -c -qg1 -qn2 -A8M -K64M -M1G -kc8k"
   build-depends:
       X11
     , base
@@ -104,6 +111,8 @@ executable xmonad-x86_64-linux
     , xmonad-contrib >=0.17
   if flag(optimize)
     ghc-options: -O2 -fexpose-all-unfoldings -fspecialise-aggressively -fstatic-argument-transformation -funbox-strict-fields
+  else
+    ghc-options: -O0
   if flag(via-llvm)
     ghc-options: -fllvm
   default-language: Haskell2010

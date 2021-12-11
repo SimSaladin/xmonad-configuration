@@ -11,7 +11,10 @@ maintainer: samuli.thomasson@pm.me
 github: SimSaladin/xmonad-configuration
 data-files: xmonad.svg
 extra-doc-files: README.md
-#extra-source-files:
+extra-source-files:
+  - "*.nix"
+  - "stack.yaml*"
+  - build
 
 flags:
   optimize:
@@ -74,5 +77,4 @@ when:
   else:
     ghc-options: -O0
 - condition: flag(via-llvm)
-  ghc-options:
-    - -fllvm
+  ghc-options: -fllvm
