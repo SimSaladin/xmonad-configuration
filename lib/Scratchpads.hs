@@ -84,7 +84,7 @@ cyclePads = (? "Toggle next scratchpad (cyclic)") $ do
       _      -> minimizeScratchpads pads
 
 
-togglePad name = (? printf "Toggle scratchpad %s" name) $ do toggleScratchpad True name
+togglePad name = (? printf "Toggle scratchpad %s" name) $ toggleScratchpad True name
 -- | Don't create if missing
 togglePadNoCreate = toggleScratchpad False
 

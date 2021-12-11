@@ -22,13 +22,16 @@
 -- gtk-launch app-name.desktop [URI...]
 ------------------------------------------------------------------------------
 
-module DesktopEntries where
+module DesktopEntries (
+  desktopEntryPrompt, launchDesktopEntry, launchDesktopEntry'
+  ) where
 
-import           MyRun
 import           System.Environment.XDG.DesktopEntry
 import           System.FilePath
 import           XMonad                              (MonadIO, X, io, trace)
 import           XMonad.Prompt
+
+import           MyRun
 
 data DesktopEntryPrompt = DesktopEntryPrompt
 instance XPrompt DesktopEntryPrompt where

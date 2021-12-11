@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
@@ -99,7 +100,8 @@ import           Codec.Binary.UTF8.String (encodeString)
 -- SHELL
 
 newtype Sh = Sh { unSh :: String }
-  deriving (Show, Read, IsString)
+  deriving stock (Show, Read)
+  deriving newtype (IsString)
 
 sh :: String -> Sh
 sh = Sh

@@ -2,16 +2,12 @@
 {-# LANGUAGE DeriveDataTypeable        #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
-
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE PartialTypeSignatures     #-}
 {-# LANGUAGE RebindableSyntax          #-}
 {-# LANGUAGE RecordWildCards           #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-
-
-
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
 ------------------------------------------------------------------------------
@@ -29,23 +25,22 @@
 --
 ------------------------------------------------------------------------------
 
-module MyDebug where
+module MyDebug (
+  debugIgnoreProps, debugEventHook, debugEventsFocusedWindow, myDebugManageHook, DebugCmd(..)
+  ) where
 
 import           XMonad
-
 import qualified XMonad.Hooks.DebugEvents         as DebugEvents
 import qualified XMonad.Hooks.DebugStack          as DebugStack
 import qualified XMonad.Hooks.ManageDebug
+import           XMonad.Prelude
+import qualified XMonad.Util.DesktopNotifications as Notify
 import qualified XMonad.Util.ExtensibleState      as XS
 import qualified XMonad.Util.Invisible            as Invisible
-
-import           Control.Monad
-import           Data.Monoid
-import qualified Data.Set                         as Set
-import           Prelude
-
-import qualified XMonad.Util.DesktopNotifications as Notify
 import           XMonad.Util.NamedCommands
+
+import qualified Data.Set                         as Set
+import           Prelude                          (Show(show))
 
 data DebugXS = DebugXS { debugIgnoreProps   :: !(Atom -> Bool)
                        , debugEnableWindows :: !(Invisible.Invisible Maybe (Set.Set Window))
@@ -101,6 +96,6 @@ myDebugManageHook = do
     go <- XS.gets debugEnableNext
     XS.modify (\xs -> xs { debugEnableNext = False })
     pure go
-  when go $ do
+  when go $
      ask >>= liftX . debugEventsWindow
   idHook
