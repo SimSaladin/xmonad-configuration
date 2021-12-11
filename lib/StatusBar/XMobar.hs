@@ -15,8 +15,6 @@
 module StatusBar.XMobar where
 
 import           XMonad
-import           XMonad.Prelude
-import           XMonad.Util.Loggers
 import           XMonad.Hooks.DynamicLog
 
 import qualified Xmobar              as XB
@@ -87,9 +85,9 @@ fromConfigB cb = go' cb base
 
 sepByB :: ConfigB -> [ConfigB] -> ConfigB
 sepByB sep = go mempty where
-  go rs (OnIfB m x y@(ConcatB []):ys) = OnIfB m (rs <> x <> go sep ys) (go rs ys)
-  go rs (x:ys)                        = rs <> x <> go sep ys
-  go rs []                            = mempty
+  go rs (OnIfB m x (ConcatB []):ys) = OnIfB m (rs <> x <> go sep ys) (go rs ys)
+  go rs (x:ys)                      = rs <> x <> go sep ys
+  go _  []                          = mempty
 
 modifyConfigB :: (XB.Config -> XB.Config) -> ConfigB
 modifyConfigB = SetConfigB

@@ -29,12 +29,10 @@ module MyXmobar
 import           XMonad                        hiding (spawn, title)
 import qualified XMonad.StackSet               as W
 
-import           XMonad.Actions.CopyWindow     (wsContainingCopies)
+--import           XMonad.Actions.CopyWindow     (wsContainingCopies)
 import           XMonad.Actions.WorkspaceNames (workspaceNamesPP)
 import qualified XMonad.Hooks.StatusBar        as SB
 import           XMonad.Hooks.StatusBar.PP     (dynamicLogString, PP(..), wrap, pad, xmobarRaw, shorten)
-import           XMonad.Hooks.ManageHelpers    (isInProperty)
-import           XMonad.Hooks.UrgencyHook      (readUrgents)
 import qualified XMonad.Util.ExtensibleState   as XS
 import           XMonad.Util.Loggers
 import           XMonad.Util.PureX
@@ -47,14 +45,10 @@ import           Control.Monad
 import           Data.IORef
 import qualified Data.Map                      as Map
 import           Data.Maybe
-import           Data.Semigroup                (All)
-import           Data.String                   (IsString(..))
 import           Prelude
-import qualified System.Directory
 import qualified System.IO                     as IO
 import           System.IO.Unsafe              (unsafePerformIO)
 import qualified System.Posix                  as Posix
-import qualified System.Random                 as Random
 import           System.Timeout                (timeout)
 import           Text.Printf                   (printf)
 
@@ -296,6 +290,7 @@ myFocusedPP = def
 
     -- layoutParts s = xmobarRaw (unwords $ init (words s)) ++ " " ++ fg colMagenta  (xmobarRaw $ last ("":words s))
 
+myUnfocusedPP :: PP
 myUnfocusedPP = myFocusedPP { ppCurrent = fg colBlue }
 
 exitHook :: X ()
@@ -336,9 +331,9 @@ cleanupNamedLoggers = io $ do
     forM_ [h | (mf,mu) <- Map.elems logxs >>= Map.elems, Just h <- [mf,mu]] (catchIO . IO.hClose)
 
 namedLogLazy :: NamedLoggerId -> Logger -> X ()
-namedLogLazy k lgr = lgr >>= \ms -> whenJust ms log
+namedLogLazy k lgr = lgr >>= \ms -> whenJust ms logIt
   where
-    log str = do
+    logIt str = do
       sid <- curScreenId
       res <- XS.gets (Map.lookup (k, sid) . nlLasts)
       when (res /= Just str) (namedLogString k str)

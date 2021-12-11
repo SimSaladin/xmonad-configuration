@@ -59,7 +59,7 @@ import           Control.Applicative
 import           Data.Data
 import           Data.Kind
 import           Data.Proxy
-import           Text.Printf (PrintfArg, printf)
+import           Text.Printf (printf)
 import           GHC.TypeLits
 
 -- * Command Decoration
@@ -148,7 +148,7 @@ instance forall name. (KnownSymbol name) => IsCmd (name :? X ()) where
 
 instance forall name p. (KnownSymbol name, Typeable p) => IsCmd (name :? (p -> X ())) where
   -- TODO should be illegal
-  -- command (CmdX a) =
+  command (CmdX _) = error "IsCmd.command: CmdX"
   command (CmdParamX f g p) = f p ? printf (symbolVal (Proxy :: Proxy name)) (g p)
   describeType _ = (symbolVal (Proxy :: Proxy name))
   cmdEnum _ = []

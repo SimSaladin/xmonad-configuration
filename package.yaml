@@ -15,7 +15,6 @@ extra-source-files:
   - "*.nix"
   - "stack.yaml*"
   - build
-
 flags:
   optimize:
     description: Enable optimizations
@@ -25,13 +24,11 @@ flags:
     description: Compile via LLVM
     default: false
     manual: true
-
 library:
   source-dirs: lib
   when:
   - condition: false
     other-modules: Paths_xmonad_configuration
-
 executables:
   xmonad-x86_64-linux:
     main: xmonad.hs
@@ -43,7 +40,8 @@ executables:
     when:
     - condition: flag(via-llvm)
       ghc-options: -fllvm
-
+    - condition: false
+      other-modules: Paths_xmonad_configuration
 dependencies:
 - base
 - containers
@@ -62,12 +60,10 @@ dependencies:
 - xmonad-contrib >= 0.17
 - xdg-desktop-entry
 - random
-
 ghc-options:
 - -dynamic
 - -pie
 - -fPIC
-
 when:
 - condition: flag(optimize)
   then:

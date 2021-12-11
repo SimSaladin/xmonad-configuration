@@ -100,7 +100,6 @@ import           XMonad.Layout.Magnifier             (magnifierOff)
 import qualified XMonad.Layout.Magnifier             as Magnifier
 import           XMonad.Layout.Maximize              (maximizeRestore, maximizeWithPadding)
 import           XMonad.Layout.Minimize              (minimize)
-import qualified XMonad.Layout.Minimize
 import qualified XMonad.Layout.Mosaic                as Mosaic
 import qualified XMonad.Layout.MultiToggle           as MultiToggle
 import           XMonad.Layout.MultiToggle.Instances
@@ -119,10 +118,8 @@ import qualified XMonad.Prompt.Shell                 as XP.Shell
 import qualified XMonad.Prompt.Window                as XP (WindowPrompt(Goto), allWindows, windowPrompt)
 import qualified XMonad.Prompt.Workspace             as XP (Wor(Wor))
 import           XMonad.Util.NamedActions            (showKm)
-import qualified XMonad.Actions.AfterDrag            as AfterDrag
 import           XMonad.Util.PureX
 import qualified XMonad.Util.Rectangle               as Rect
-import qualified XMonad.Util.StringProp              as StringProp
 import           XMonad.Util.Types                   (Direction1D(..), Direction2D(..))
 import qualified XMonad.Util.WindowProperties        as WinProp
 
@@ -288,9 +285,7 @@ myLayout = do
     , MRT.slaveFrac  = 50%100 }
   addLayout (OneBig (2/3) (2/3))
   addLayout (Tall 1 (3/100) (1/2))
-  --addLayout splitGrid
-  --addLayout (ThreeColMid 1 (1/30) (4/9))
-  --addLayout (Mosaic.mosaic 1.25 [3,2])
+  addLayout (ThreeColMid 1 (1/30) (4/9))
 
   -- Modifiers
   -- NOTE: MIRROR with REFLECTX/Y is most intuitive when mirror goes first.

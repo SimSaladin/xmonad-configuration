@@ -87,9 +87,7 @@ library
 
 executable xmonad-x86_64-linux
   main-is: xmonad.hs
-  other-modules:
-      Paths_xmonad_configuration
-  ghc-options: -dynamic -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -G3 -c -qg1 -qn2 -A8M -K64M -M1G -kc8k"
+  ghc-options: -dynamic -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"
   build-depends:
       X11
     , base

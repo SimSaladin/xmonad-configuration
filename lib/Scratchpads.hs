@@ -43,11 +43,9 @@ import qualified XMonad.StackSet             as W
 
 import           Data.Maybe
 import           Text.Printf
-import           Text.Read
 import qualified XMonad.Util.ExtensibleState as XS
 import           XMonad.Util.NamedCommands
 import           XMonad.Util.PureX
-import qualified XMonad.Util.StringProp      as StringProp
 import qualified Data.Map as M
 
 --dynamicProp  = "XMONAD_DYNAMIC_TOGGLE"
