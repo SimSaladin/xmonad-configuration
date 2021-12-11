@@ -1,8 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UnicodeSyntax #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE UnicodeSyntax         #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-unused-local-binds #-}
@@ -32,7 +32,7 @@ import qualified XMonad.StackSet               as W
 --import           XMonad.Actions.CopyWindow     (wsContainingCopies)
 import           XMonad.Actions.WorkspaceNames (workspaceNamesPP)
 import qualified XMonad.Hooks.StatusBar        as SB
-import           XMonad.Hooks.StatusBar.PP     (dynamicLogString, PP(..), wrap, pad, xmobarRaw, shorten)
+import           XMonad.Hooks.StatusBar.PP     (PP(..), dynamicLogString, pad, shorten, wrap, xmobarRaw)
 import qualified XMonad.Util.ExtensibleState   as XS
 import           XMonad.Util.Loggers
 import           XMonad.Util.PureX
@@ -351,7 +351,7 @@ namedLogString k str = do
         r <- timeout 100000 $ hPutStrLn h $ encodeString str
         case r of
           Nothing -> trace "namedLogString: timeout reached!!"
-          _ -> return ()
+          _       -> return ()
 
 namedLoggersLogHook :: PP -> X ()
 namedLoggersLogHook pp = do

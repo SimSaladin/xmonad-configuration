@@ -17,14 +17,14 @@ module StatusBar.XMobar where
 import           XMonad
 import           XMonad.Hooks.DynamicLog
 
-import qualified Xmobar              as XB
+import qualified Xmobar                  as XB
 
 import qualified DBus
 import qualified DBus.Client
-import           Data.String         (IsString(..))
+import           Data.String             (IsString(..))
 import qualified System.Directory
-import qualified System.Random       as Random
-import           Text.Printf         (printf)
+import qualified System.Random           as Random
+import           Text.Printf             (printf)
 
 import           MyTheme
 
@@ -192,21 +192,21 @@ wirelessB iface args r = CommandB ("%" ++ iface ++ "wi%") $ XB.Run $ XB.Wireless
 -- * Monitor Arguments
 
 data MonArgs = MonArgs
-  { monTemplate :: String -- -t (template)
-  , monHigh, monLow :: Int -- -H -L (thresholds)
+  { monTemplate                               :: String -- -t (template)
+  , monHigh, monLow                           :: Int -- -H -L (thresholds)
   , monHighColor, monLowColor, monNormalColor :: String -- -h -l -n (colors)
-  , monSuffix :: Bool -- -S True (default False)
-  , monPercentagePadding :: Int -- -p (default 0)
-  , monDecimalDigits :: Int -- -d (default 0)
-  , monFieldWidthMin, monFieldWidthMax :: Int -- -m -M (default 0)
-  , monFieldEllipsis, monTotalEllipsis :: String -- -e -E (default "")
-  , monFieldWidthFixed, monTotalWidthMax :: Int -- -w -T (default 0)
-  , monPaddingChars :: String -- -c (default " ")
-  , monFieldAlign :: Char -- -a r|l (default 'r')
-  , monBarBg, monBarFg :: String -- -b -f (default ":", "#")
-  , monBarWidth :: Int -- -W (default 10)
-  , monNotAvailable :: String -- -x (default "N/A")
-  , monExtraArgs :: [String] -- -- ... (monitor-specific)
+  , monSuffix                                 :: Bool -- -S True (default False)
+  , monPercentagePadding                      :: Int -- -p (default 0)
+  , monDecimalDigits                          :: Int -- -d (default 0)
+  , monFieldWidthMin, monFieldWidthMax        :: Int -- -m -M (default 0)
+  , monFieldEllipsis, monTotalEllipsis        :: String -- -e -E (default "")
+  , monFieldWidthFixed, monTotalWidthMax      :: Int -- -w -T (default 0)
+  , monPaddingChars                           :: String -- -c (default " ")
+  , monFieldAlign                             :: Char -- -a r|l (default 'r')
+  , monBarBg, monBarFg                        :: String -- -b -f (default ":", "#")
+  , monBarWidth                               :: Int -- -W (default 10)
+  , monNotAvailable                           :: String -- -x (default "N/A")
+  , monExtraArgs                              :: [String] -- -- ... (monitor-specific)
   } deriving (Show)
 
 instance Default MonArgs where
@@ -259,9 +259,9 @@ renderMonArgs args = go 't' monTemplate id
 -- * Boxes (<box>)
 
 data BoxOptions = BoxOptions
-  { boxType :: BoxType
-  , boxColor :: String
-  , boxWidth :: Int
+  { boxType   :: BoxType
+  , boxColor  :: String
+  , boxWidth  :: Int
   , boxOffset :: (XB.Align, Int)
   , boxMargin :: [Int] -- top,bottom,left,right
   } deriving Eq

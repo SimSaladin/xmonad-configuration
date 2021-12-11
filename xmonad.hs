@@ -88,7 +88,6 @@ import qualified XMonad.Hooks.ToggleHook             as ToggleHook
 import           XMonad.Hooks.UrgencyHook            (focusUrgent)
 import qualified XMonad.Hooks.UrgencyHook            as Urgency
 import           XMonad.Hooks.WallpaperSetter
-import qualified XMonad.Layout.MouseResizableTile    as MRT
 import qualified XMonad.Layout.BinarySpacePartition  as BSP
 import           XMonad.Layout.BoringWindows         (boringWindows)
 import qualified XMonad.Layout.BoringWindows         as BW
@@ -101,6 +100,7 @@ import qualified XMonad.Layout.Magnifier             as Magnifier
 import           XMonad.Layout.Maximize              (maximizeRestore, maximizeWithPadding)
 import           XMonad.Layout.Minimize              (minimize)
 import qualified XMonad.Layout.Mosaic                as Mosaic
+import qualified XMonad.Layout.MouseResizableTile    as MRT
 import qualified XMonad.Layout.MultiToggle           as MultiToggle
 import           XMonad.Layout.MultiToggle.Instances
 import qualified XMonad.Layout.NoBorders             as NoBorders
@@ -132,9 +132,9 @@ import           Data.Maybe
 import           Data.Monoid
 import           Data.Proxy
 import           Data.Ratio                          ((%))
+import           System.Directory                    (doesFileExist)
 import qualified System.Environment
 import           System.Exit                         (exitSuccess)
-import           System.Directory                    (doesFileExist)
 import           System.FilePath                     ((</>))
 import qualified System.Posix                        as Posix
 import           Text.Printf                         (printf)
@@ -157,7 +157,7 @@ import qualified XMonad.Util.DesktopNotifications    as Notify
 import           XMonad.Util.NamedCommands
 import           XMonad.Util.NamedCommands.Orphans
 
-import Data.Int (Int32)
+import           Data.Int                            (Int32)
 
 -- * Main
 
@@ -873,22 +873,22 @@ instance IsCmd MyFloatCmd where
   command (SnapShrink d2 p) = withFocused (FloatSnap.snapShrink d2 p) ? printf "Shrink %s (FloatSnap)" (show d2)
 
 instance IsCmd WindowCmd where
-  command FocusMaster         = BW.focusMaster                                            ? "Focus master (BoringWindows)"
-  command FocusUp             = BW.focusUp                                                ? "Focus up (BoringWindows)"
-  command FocusDown           = BW.focusDown                                              ? "Focus down (BoringWindows)"
-  command FocusUrgent         = focusUrgent                                               ? "Focus urgent window"
-  command SwapMaster          = windows W.swapMaster                                      ? "Swap to master"
-  command SwapUp              = windows W.swapUp                                          ? "Swap up"
-  command SwapDown            = windows W.swapDown                                        ? "Swap down"
-  command RotSlavesDown       = RotSlaves.rotSlavesDown                                   ? "Rotate slaves down"
-  command RotSlavesUp         = RotSlaves.rotSlavesUp                                     ? "Rotate slaves up"
-  command RotAllDown          = RotSlaves.rotAllDown                                      ? "Rotate down"
-  command RotAllUp            = RotSlaves.rotAllUp                                        ? "Rotate up"
-  command (FocusSwapMaster w) = windows (W.focusWindow w Control.Monad.>> W.swapMaster)   ? "Focus window & swap it master"
+  command FocusMaster               = BW.focusMaster                                            ? "Focus master (BoringWindows)"
+  command FocusUp                   = BW.focusUp                                                ? "Focus up (BoringWindows)"
+  command FocusDown                 = BW.focusDown                                              ? "Focus down (BoringWindows)"
+  command FocusUrgent               = focusUrgent                                               ? "Focus urgent window"
+  command SwapMaster                = windows W.swapMaster                                      ? "Swap to master"
+  command SwapUp                    = windows W.swapUp                                          ? "Swap up"
+  command SwapDown                  = windows W.swapDown                                        ? "Swap down"
+  command RotSlavesDown             = RotSlaves.rotSlavesDown                                   ? "Rotate slaves down"
+  command RotSlavesUp               = RotSlaves.rotSlavesUp                                     ? "Rotate slaves up"
+  command RotAllDown                = RotSlaves.rotAllDown                                      ? "Rotate down"
+  command RotAllUp                  = RotSlaves.rotAllUp                                        ? "Rotate up"
+  command (FocusSwapMaster w)       = windows (W.focusWindow w Control.Monad.>> W.swapMaster)   ? "Focus window & swap it master"
   command ToggleFocusedWindowBorder = (withFocused toggleBorder Control.Monad.>> refresh) ? "Toggle focused window border"
-  command (MaximizeWindow w)  = XMonad.Actions.Minimize.maximizeWindow w ? "Maximize window"
-  command (MinimizeWindow w)  = XMonad.Actions.Minimize.minimizeWindow w ? "Minimize window"
-  command MinimizeFocused     = withFocused XMonad.Actions.Minimize.minimizeWindow ? "Minimize Focused"
+  command (MaximizeWindow w)        = XMonad.Actions.Minimize.maximizeWindow w ? "Maximize window"
+  command (MinimizeWindow w)        = XMonad.Actions.Minimize.minimizeWindow w ? "Minimize window"
+  command MinimizeFocused           = withFocused XMonad.Actions.Minimize.minimizeWindow ? "Minimize Focused"
 
 -- * Misc. hooks
 

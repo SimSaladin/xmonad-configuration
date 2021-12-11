@@ -16,15 +16,15 @@
 
 module XMonad.Prompt.Environ (environPrompt) where
 
-import XMonad
+import           XMonad
 
-import qualified XMonad.Prompt                       as XP
-import           XMonad.Prompt.ConfirmPrompt         (confirmPrompt)
-import qualified XMonad.Prompt.Input                 as XP.Input
+import qualified XMonad.Prompt               as XP
+import           XMonad.Prompt.ConfirmPrompt (confirmPrompt)
+import qualified XMonad.Prompt.Input         as XP.Input
 
 import           Data.Maybe
-import           Text.Printf                         (printf)
 import qualified System.Environment
+import           Text.Printf                 (printf)
 
 environPrompt :: XP.XPConfig -> X ()
 environPrompt xpc = do

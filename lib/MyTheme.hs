@@ -33,20 +33,20 @@ module MyTheme
   , xpConfigNoHist
   ) where
 
-import           XMonad                        hiding (Font, title)
-import qualified XMonad                        as X
+import           XMonad                    hiding (Font, title)
+import qualified XMonad                    as X
 
-import qualified XMonad.Actions.GridSelect     as GS
-import qualified XMonad.Prompt                 as XP
-import           XMonad.Prompt.FuzzyMatch      (fuzzyMatch, fuzzySort)
+import qualified XMonad.Actions.GridSelect as GS
+import qualified XMonad.Prompt             as XP
+import           XMonad.Prompt.FuzzyMatch  (fuzzyMatch, fuzzySort)
 
-import qualified Data.Map
-import qualified Data.Char                     as Char
+import qualified Data.Char                 as Char
 import           Data.Foldable
 import qualified Data.List
+import qualified Data.Map
 import           Data.Ratio
 import           Prelude
-import           Text.Printf                   (printf)
+import           Text.Printf               (printf)
 
 import           XMonad.Config.Solarized
 

@@ -15,7 +15,7 @@ module XMonad.Hooks.EwmhDesktopsEx (
   setEWMHDesktopGeometry
   ) where
 
-import XMonad
+import           XMonad
 
 -- | A startup hook that sets _NET_DESKTOP_GEOMETRY on the root window.
 -- See https://github.com/xmonad/xmonad-contrib/issues/150#issuecomment-292828640

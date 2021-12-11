@@ -1,15 +1,15 @@
-{-# LANGUAGE PolyKinds                 #-}
-{-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DefaultSignatures         #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE GADTs                     #-}
+{-# LANGUAGE PolyKinds                 #-}
+{-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
 
 
 {-# OPTIONS_GHC -Wno-orphans -Wno-redundant-constraints #-}
@@ -47,17 +47,17 @@ module XMonad.Util.NamedCommands (
   ) where
 
 import           XMonad
-import qualified XMonad.Prompt                       as XP
-import           XMonad.Util.NamedActions           (NamedAction)
-import qualified XMonad.Util.NamedActions           as NA
+import qualified XMonad.Prompt            as XP
+import           XMonad.Util.NamedActions (NamedAction)
+import qualified XMonad.Util.NamedActions as NA
 
-import           Prelude
 import           Control.Applicative
 import           Data.Data
 import           Data.Kind
 import           Data.Proxy
-import           Text.Printf (printf)
 import           GHC.TypeLits
+import           Prelude
+import           Text.Printf              (printf)
 
 -- * Command Decoration
 
@@ -145,7 +145,7 @@ instance forall name. (KnownSymbol name) => IsCmd (name :? X ()) where
 
 instance forall name p. (KnownSymbol name, Typeable p) => IsCmd (name :? (p -> X ())) where
   -- TODO should be illegal
-  command (CmdX _) = error "IsCmd.command: CmdX"
+  command (CmdX _)          = error "IsCmd.command: CmdX"
   command (CmdParamX f g p) = f p ? printf (symbolVal (Proxy :: Proxy name)) (g p)
   describeType _ = symbolVal (Proxy :: Proxy name)
   cmdEnum _ = []

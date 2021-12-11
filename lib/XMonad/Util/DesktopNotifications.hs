@@ -24,9 +24,9 @@
 
 module XMonad.Util.DesktopNotifications where
 
-import           XMonad.Prelude
 import           XMonad                      (Default(..), ExtensionClass(..), MonadIO(liftIO), X)
 import qualified XMonad                      as X
+import           XMonad.Prelude
 import qualified XMonad.StackSet             as W
 import qualified XMonad.Util.ExtensibleState as XS
 import qualified XMonad.Util.NamedWindows    as NW
@@ -43,7 +43,7 @@ import qualified Data.Text                   as T
 import qualified Data.Text.Lazy              as TL
 import           Data.Word                   (Word32, Word8)
 
-import           Text.Printf (PrintfArg)
+import           Text.Printf                 (PrintfArg)
 
 import           System.Directory            (doesFileExist)
 import           System.IO                   (stderr)
@@ -254,7 +254,7 @@ startupHook = do
   icon <-
     let f = (xdir <> "/xmonad.svg")
      in X.io (doesFileExist f) >>= \case
-            True -> pure (Just f)
+            True  -> pure (Just f)
             False -> pure Nothing
   mvar <- X.io MVar.newEmptyMVar
   new  <- XS.modified $ \s ->

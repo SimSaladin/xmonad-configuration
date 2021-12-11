@@ -1,11 +1,11 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module XMonad.Layout.Hinted where
 
 import           XMonad
 
-import           XMonad.Layout.LayoutHints    ({-layoutHintsToCenter,-} layoutHintsWithPlacement)
+import           XMonad.Layout.LayoutHints    (layoutHintsWithPlacement)
 import           XMonad.Layout.LayoutModifier (ModifiedLayout(..))
 import           XMonad.Layout.MultiToggle    (Transformer(..))
 import           XMonad.Layout.Renamed        (Rename(PrependWords), renamed)

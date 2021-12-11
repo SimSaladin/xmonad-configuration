@@ -16,13 +16,13 @@
 
 module SpawnOnByPPID where
 
-import XMonad
-import XMonad.Prelude
-import XMonad.Hooks.ManageHelpers
-import qualified XMonad.Actions.SpawnOn              as SpawnOn
-import qualified XMonad.Prompt                       as XP
+import           MyRun
+import           XMonad
+import qualified XMonad.Actions.SpawnOn     as SpawnOn
+import           XMonad.Hooks.ManageHelpers
+import           XMonad.Prelude
+import qualified XMonad.Prompt              as XP
 import           XMonad.Util.PureX
-import MyRun
 
 data PIDPrompt = PIDPrompt
 

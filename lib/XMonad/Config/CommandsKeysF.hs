@@ -1,11 +1,11 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DeriveFunctor              #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE DeriveFunctor       #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 ------------------------------------------------------------------------------
@@ -29,22 +29,22 @@ module XMonad.Config.CommandsKeysF
    module XMonad.Config.CommandsKeysF -- TODO
   ) where
 
-import           XMonad.Prelude
 import           XMonad
-import qualified XMonad.Util.EZConfig      as EZ
-import           XMonad.Util.NamedActions  (NamedAction)
-import qualified XMonad.Util.NamedActions  as NA
-import qualified XMonad.Util.ExtensibleState         as XS
-import qualified XMonad.Prompt as XP
+import           XMonad.Prelude
+import qualified XMonad.Prompt               as XP
+import qualified XMonad.Util.EZConfig        as EZ
+import qualified XMonad.Util.ExtensibleState as XS
+import           XMonad.Util.NamedActions    (NamedAction)
+import qualified XMonad.Util.NamedActions    as NA
 
 import           XMonad.Util.NamedCommands
 
+import           Control.Arrow               (second)
 import           Control.Monad.Fix
 import           Control.Monad.Free
-import           Control.Arrow (second)
-import           Data.Either               (lefts)
-import           Data.Map                  (Map)
-import qualified Data.Map                  as M
+import           Data.Either                 (lefts)
+import           Data.Map                    (Map)
+import qualified Data.Map                    as M
 import           Data.Tree
 import           Data.Unique
 import           Prelude
@@ -114,11 +114,11 @@ instance Show SomeCmdW where
 -- * Interpret
 
 data Builder = Builder
-  { bKeys       :: !(Forest (Either GroupName (EZKey, CmdId)))
-  , bButtons    :: !(Map (ButtonMask, Button) CmdId)
-  , bBindings   :: !(Map EZKey CmdId)
-  , bCommands   :: !(Map CmdId SomeCmd)
-  , bCommandsW  :: !(Map CmdId SomeCmdW)
+  { bKeys      :: !(Forest (Either GroupName (EZKey, CmdId)))
+  , bButtons   :: !(Map (ButtonMask, Button) CmdId)
+  , bBindings  :: !(Map EZKey CmdId)
+  , bCommands  :: !(Map CmdId SomeCmd)
+  , bCommandsW :: !(Map CmdId SomeCmdW)
   } deriving (Show)
 
 instance Semigroup Builder where

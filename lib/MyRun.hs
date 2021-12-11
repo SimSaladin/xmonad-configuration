@@ -79,12 +79,12 @@ import           Prelude
 import qualified Control.Exception        as E
 import           Control.Monad
 import qualified Data.Map                 as M
+import           Data.String              (IsString)
 import qualified System.IO                as IO
 import qualified System.Posix             as Posix
 import qualified System.Process           as P
 import           System.Timeout           (timeout)
 import           Text.Printf              (printf)
-import           Data.String (IsString)
 
 import           Codec.Binary.UTF8.String (encodeString)
 
@@ -168,9 +168,9 @@ exec cmd = cmdSpec cmd >>= exec' where
   exec' (P.RawCommand prog args) = Posix.executeFile (encodeString prog) True (map encodeString args) Nothing
 
 data TerminalCfg = TerminalCfg
-  { terminalName :: String
-  , terminalGeometry :: String
-  , terminalHold :: Bool
+  { terminalName      :: String
+  , terminalGeometry  :: String
+  , terminalHold      :: Bool
   , terminalSaveLines :: Int
   } deriving (Show)
 

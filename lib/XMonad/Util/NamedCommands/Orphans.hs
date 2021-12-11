@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable        #-}
-{-# LANGUAGE StandaloneDeriving        #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 
@@ -24,18 +24,18 @@ import           XMonad
 import qualified XMonad.Util.NamedActions           as NA
 import           XMonad.Util.NamedCommands
 
+import           XMonad.Actions.OnScreen            (Focus(..))
+import           XMonad.Actions.PhysicalScreens     (PhysicalScreen(..))
 import           XMonad.Hooks.ManageDocks           (ToggleStruts(..))
 import qualified XMonad.Layout.BinarySpacePartition as BSP
+import qualified XMonad.Layout.GridVariants         as GV
 import           XMonad.Layout.Magnifier            (MagnifyMsg)
 import qualified XMonad.Layout.Magnifier            as Magnifier (MagnifyMsg(..))
+import qualified XMonad.Layout.Mosaic               as Mosaic
 import           XMonad.Layout.MultiToggle          (Toggle(Toggle), Transformer)
+import qualified XMonad.Layout.WindowArranger       as WA
 import           XMonad.Layout.WindowNavigation     (Navigate(Apply, Go, Move, Swap))
-import qualified XMonad.Prompt                       as XP
-import qualified XMonad.Layout.WindowArranger        as WA
-import qualified XMonad.Layout.Mosaic                as Mosaic
-import           XMonad.Actions.PhysicalScreens      (PhysicalScreen(..))
-import qualified XMonad.Layout.GridVariants          as GV
-import           XMonad.Actions.OnScreen             (Focus(..))
+import qualified XMonad.Prompt                      as XP
 
 instance IsCmd Navigate where
   command msg = NA.NamedAction (sendMessage msg, [describe' msg]) where

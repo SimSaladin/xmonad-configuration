@@ -24,11 +24,11 @@
 
 module DesktopEntries where
 
-import XMonad (X, io, trace, MonadIO)
-import XMonad.Prompt
-import           System.Environment.XDG.DesktopEntry -- package xdg-desktop-entry
+import           MyRun
+import           System.Environment.XDG.DesktopEntry
 import           System.FilePath
-import MyRun
+import           XMonad                              (MonadIO, X, io, trace)
+import           XMonad.Prompt
 
 data DesktopEntryPrompt = DesktopEntryPrompt
 instance XPrompt DesktopEntryPrompt where

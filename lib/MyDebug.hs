@@ -47,9 +47,9 @@ import           Prelude
 import qualified XMonad.Util.DesktopNotifications as Notify
 import           XMonad.Util.NamedCommands
 
-data DebugXS = DebugXS { debugIgnoreProps :: !(Atom -> Bool)
+data DebugXS = DebugXS { debugIgnoreProps   :: !(Atom -> Bool)
                        , debugEnableWindows :: !(Invisible.Invisible Maybe (Set.Set Window))
-                       , debugEnableNext :: !Bool
+                       , debugEnableNext    :: !Bool
                        }
 
 instance ExtensionClass DebugXS where
@@ -72,17 +72,17 @@ debugEventHook e = do
   ignoreProp <- XS.gets debugIgnoreProps
   wEnabled <- XS.gets (flip Set.member . Invisible.fromIMaybe mempty . debugEnableWindows)
   case e of
-    ConfigureRequestEvent{..} | wEnabled ev_window -> trace (show e) >> return (All True)
-    ConfigureEvent{..}        | wEnabled ev_window -> DebugEvents.debugEventsHook e
-    MapRequestEvent{}        -> DebugEvents.debugEventsHook e
-    MapNotifyEvent{}         -> DebugEvents.debugEventsHook e
-    UnmapEvent{..}            | wEnabled ev_window -> DebugEvents.debugEventsHook e
-    DestroyWindowEvent{..}    | wEnabled ev_window -> DebugEvents.debugEventsHook e
-    PropertyEvent{..}         | wEnabled ev_window -> DebugEvents.debugEventsHook e
+    ConfigureRequestEvent{..} | wEnabled ev_window       -> trace (show e) >> return (All True)
+    ConfigureEvent{..}        | wEnabled ev_window       -> DebugEvents.debugEventsHook e
+    MapRequestEvent{}                                    -> DebugEvents.debugEventsHook e
+    MapNotifyEvent{}                                     -> DebugEvents.debugEventsHook e
+    UnmapEvent{..}            | wEnabled ev_window       -> DebugEvents.debugEventsHook e
+    DestroyWindowEvent{..}    | wEnabled ev_window       -> DebugEvents.debugEventsHook e
+    PropertyEvent{..}         | wEnabled ev_window       -> DebugEvents.debugEventsHook e
     PropertyEvent{..}         | not (ignoreProp ev_atom) -> DebugEvents.debugEventsHook e
-    ExposeEvent{..}           | wEnabled ev_window -> DebugEvents.debugEventsHook e
-    ClientMessageEvent{..}    | wEnabled ev_window -> DebugEvents.debugEventsHook e
-    _ -> return (All True)
+    ExposeEvent{..}           | wEnabled ev_window       -> DebugEvents.debugEventsHook e
+    ClientMessageEvent{..}    | wEnabled ev_window       -> DebugEvents.debugEventsHook e
+    _                                                    -> return (All True)
 
 debugEventsWindow :: Window -> X ()
 debugEventsWindow w = do

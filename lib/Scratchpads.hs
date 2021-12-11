@@ -1,7 +1,7 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE TypeOperators      #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 ------------------------------------------------------------------------------
@@ -41,12 +41,12 @@ import qualified XMonad.Prompt               as XP
 import           XMonad.Prompt.ConfirmPrompt (confirmPrompt)
 import qualified XMonad.StackSet             as W
 
+import qualified Data.Map                    as M
 import           Data.Maybe
 import           Text.Printf
 import qualified XMonad.Util.ExtensibleState as XS
 import           XMonad.Util.NamedCommands
 import           XMonad.Util.PureX
-import qualified Data.Map as M
 
 --dynamicProp  = "XMONAD_DYNAMIC_TOGGLE"
 --dynamicPadId = "dynamic"
