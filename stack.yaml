@@ -1,5 +1,6 @@
 ---
 resolver: lts-18.18
+compiler: ghc-8.10.7
 
 packages:
   - ./.
@@ -11,7 +12,9 @@ flags:
 allow-newer: true
 
 extra-deps:
-  - ./xmonad-contrib
+  - git: https://github.com/SimSaladin/xmonad-contrib.git
+    commit: 4014d0e9df5d261d13626b9b99ee43fd9d59c742
+    # nix-sha256: 1dn3k3n2hjwiyng132wyv4177q69rq8wrms5c34n66pys21ih96k
   - xmonad-0.17.0@sha256:fc90c8fa647390c68c902912a5a7417f04025dfe72f7de51b248217f7ca0d484,5533
   - xmobar-0.40@sha256:5d34881bc79c07734dd928651c0ff3e6d1614f18572d394e166fcf31c00560e5,13936
   - iwlib-0.1.0@sha256:226e4582d6878166a172ff98c868e25c4ed478ab28ab493498e464b1fe19d39a,921

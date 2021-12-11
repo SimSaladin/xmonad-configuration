@@ -11,6 +11,17 @@ snapshots:
     size: 586296
 packages:
 - original:
+    git: https://github.com/SimSaladin/xmonad-contrib.git
+    commit: 4014d0e9df5d261d13626b9b99ee43fd9d59c742
+  completed:
+    pantry-tree:
+      sha256: d36fe5cd13f2f50565ffb4fc22523b8d438b10c4a80cac1143bbac6392f1add2
+      size: 23209
+    version: 0.17.0.9
+    git: https://github.com/SimSaladin/xmonad-contrib.git
+    name: xmonad-contrib
+    commit: 4014d0e9df5d261d13626b9b99ee43fd9d59c742
+- original:
     hackage: xmonad-0.17.0@sha256:fc90c8fa647390c68c902912a5a7417f04025dfe72f7de51b248217f7ca0d484,5533
   completed:
     pantry-tree:

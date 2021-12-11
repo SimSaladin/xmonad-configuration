@@ -9,6 +9,7 @@ fi
 : "${STACK_YAML:=stack.yaml}"
 : "${VERBOSITY:=warn}"  # silent, error, warn, info, debug
 : "${FAST:=}"           # set non-empty for faster builds
+: "${WITH_LLVM:=}"      # set non-empty to use LLVM
 
 pkg="xmonad-configuration"
 bin="${XDG_DATA_HOME:-"$HOME"/.local/share}/xmonad"
@@ -30,4 +31,4 @@ fi
 set -x
 
 "${STACK_EXE-stack}" --no-terminal --color never --verbosity "$VERBOSITY" --install-ghc --local-bin-path "$bin" \
-	build --copy-bins --no-haddock --flag "$pkg:${FAST:+-}optimize" ${FAST:+--fast} "$pkg:exe:$exe" "$@"
+	build --copy-bins --no-haddock --flag "$pkg:${FAST:+-}optimize" ${FAST:+--fast} --flag "$pkg:${WITH_LLVM:+-}via-llvm" "$pkg:exe:$exe" "$@"

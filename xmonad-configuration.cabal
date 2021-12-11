@@ -1,16 +1,34 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.34.5.
 --
 -- see: https://github.com/sol/hpack
 
 name:           xmonad-configuration
 version:        0.17
-synopsis:       XMonad custumization
+synopsis:       My XMonad configuration
+description:    XMonad configuration with lots of custom things.
+category:       System
+homepage:       https://github.com/SimSaladin/xmonad-configuration#readme
+bug-reports:    https://github.com/SimSaladin/xmonad-configuration/issues
+author:         Samuli Thomasson
+maintainer:     samuli.thomasson@pm.me
+license:        BSD3
 build-type:     Simple
+data-files:
+    xmonad.svg
+
+source-repository head
+  type: git
+  location: https://github.com/SimSaladin/xmonad-configuration
 
 flag optimize
-  description: Enable optimizations and LLVM
+  description: Enable optimizations
+  manual: True
+  default: False
+
+flag via-llvm
+  description: Compile via LLVM
   manual: True
   default: False
 
@@ -33,8 +51,6 @@ library
       XMonad.Util.DesktopNotifications
       XMonad.Util.NamedCommands
       XMonad.Util.NamedCommands.Orphans
-  other-modules:
-      Paths_xmonad_configuration
   hs-source-dirs:
       lib
   ghc-options: -dynamic -pie -fPIC
@@ -54,10 +70,12 @@ library
     , utf8-string
     , xdg-desktop-entry
     , xmobar >=0.36
-    , xmonad >=0.15
-    , xmonad-contrib >=0.16
+    , xmonad >=0.17
+    , xmonad-contrib >=0.17
   if flag(optimize)
-    ghc-options: -O2 -fllvm -fexpose-all-unfoldings -fspecialise-aggressively -fstatic-argument-transformation -funbox-strict-fields
+    ghc-options: -O2 -fexpose-all-unfoldings -fspecialise-aggressively -fstatic-argument-transformation -funbox-strict-fields
+  if flag(via-llvm)
+    ghc-options: -fllvm
   default-language: Haskell2010
 
 executable xmonad-x86_64-linux
@@ -81,9 +99,11 @@ executable xmonad-x86_64-linux
     , utf8-string
     , xdg-desktop-entry
     , xmobar >=0.36
-    , xmonad >=0.15
+    , xmonad >=0.17
     , xmonad-configuration
-    , xmonad-contrib >=0.16
+    , xmonad-contrib >=0.17
   if flag(optimize)
-    ghc-options: -O2 -fllvm -fexpose-all-unfoldings -fspecialise-aggressively -fstatic-argument-transformation -funbox-strict-fields
+    ghc-options: -O2 -fexpose-all-unfoldings -fspecialise-aggressively -fstatic-argument-transformation -funbox-strict-fields
+  if flag(via-llvm)
+    ghc-options: -fllvm
   default-language: Haskell2010
