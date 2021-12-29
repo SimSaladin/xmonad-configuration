@@ -5,6 +5,28 @@
 
 packages:
 - completed:
+    git: https://github.com/xmonad/xmonad.git
+    name: xmonad
+    pantry-tree:
+      sha256: 5d0fa4394db19dd83db66093bb5738d023eebf816d409a6b77de22bfae6cf89a
+      size: 3649
+    commit: e25d090112f2a76364a10b88a729b8586c18145b
+    version: 0.17.0.9
+  original:
+    git: https://github.com/xmonad/xmonad.git
+    commit: e25d090112f2a76364a10b88a729b8586c18145b
+- completed:
+    git: https://github.com/SimSaladin/xmonad-contrib.git
+    name: xmonad-contrib
+    pantry-tree:
+      sha256: 26b4447dafc723950e5d1eed8fcabc13624e6559d1813bacb63a2aa7f8e5a624
+      size: 23468
+    commit: d13bf41f570643fe25af92cc6cbb193acec747eb
+    version: 0.17.0.9
+  original:
+    git: https://github.com/SimSaladin/xmonad-contrib.git
+    commit: d13bf41f570643fe25af92cc6cbb193acec747eb
+- completed:
     hackage: xmobar-0.40@sha256:5d34881bc79c07734dd928651c0ff3e6d1614f18572d394e166fcf31c00560e5,13936
     pantry-tree:
       sha256: 472af11c75a0abd07d85f5ab233ebea5402cf0061806c3b83f578f01050d6733
@@ -48,7 +70,7 @@ packages:
     hackage: MissingH-1.4.3.0@sha256:32f9892ec98cd21df4f4d3ed8d95a3831ae74287ea0641d6f09b2dc6ef061d39,4859
 snapshots:
 - completed:
-    sha256: 63539429076b7ebbab6daa7656cfb079393bf644971156dc349d7c0453694ac2
-    size: 586296
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/18.yaml
-  original: lts-18.18
+    sha256: 8699812d2b2c1f83d6ad1261de9cf628ed36a1cfc14f19d67188e005e7a3a39d
+    size: 586106
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/20.yaml
+  original: lts-18.20
