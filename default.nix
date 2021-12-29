@@ -1,4 +1,4 @@
-{ haskellNixSrc ? builtins.fetchTarball https://github.com/input-output-hk/haskell.nix/archive/master.tar.gz
+{ haskellNixSrc ? builtins.getFlake "github:input-output-hk/haskell.nix/a57f4f77d811490ac1faf309295ed98d8e1ee6b9" # master @ Wed Dec 29
 , haskellNix ? import haskellNixSrc {}
 , nixpkgsSrc ? haskellNix.sources.nixpkgs-2111
 , nixpkgsArgs ? haskellNix.nixpkgsArgs
