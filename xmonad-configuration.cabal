@@ -1,6 +1,6 @@
 cabal-version: 1.18
 
--- This file has been generated from package.yaml by hpack version 0.34.5.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 
@@ -17,8 +17,8 @@ license:        BSD3
 build-type:     Simple
 extra-source-files:
     default.nix
+    shell.nix
     stack.yaml
-    stack.yaml.lock
     build
 extra-doc-files:
     README.md

@@ -1,5 +1,5 @@
 { haskellNixSrc ? builtins.getFlake "github:input-output-hk/haskell.nix/a57f4f77d811490ac1faf309295ed98d8e1ee6b9" # master @ Wed Dec 29
-, haskellNix ? import haskellNixSrc {}
+, haskellNix ? import haskellNixSrc { }
 , nixpkgsSrc ? haskellNix.sources.nixpkgs-2111
 , nixpkgsArgs ? haskellNix.nixpkgsArgs
 , compiler-nix-name ? "ghc8107"
@@ -38,7 +38,22 @@ let
       })
     ];
   };
+
+  nix-pre-commit-hooks = import (builtins.fetchTarball "https://github.com/cachix/pre-commit-hooks.nix/tarball/master");
 in
 project // {
   xmonad-x86_64-linux = project.hsPkgs.xmonad-configuration.components.exes.xmonad-x86_64-linux;
+
+  pre-commit-check = nix-pre-commit-hooks.run {
+    src = ./.;
+    # If your hooks are intrusive, avoid running on each commit with a default_states like this:
+    # default_stages = ["manual" "push"];
+    hooks = {
+      hpack.enable = true;
+      hlint.enable = true;
+      stylish-haskell.enable = true;
+      shellcheck.enable = true;
+      nixpkgs-fmt.enable = true;
+    };
+  };
 }
