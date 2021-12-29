@@ -35,7 +35,7 @@ instance XP.XPrompt PIDPrompt where
 pidPrompt :: XP.XPConfig -> String -> X (Maybe ProcessID)
 pidPrompt xpconfig _name = do
   cf <- getPIDCompl xpconfig
-  XP.mkXPromptWithReturn PIDPrompt xpconfig{ XP.sorter = flip const } cf
+  XP.mkXPromptWithReturn PIDPrompt xpconfig{ XP.sorter = \ _ x -> x } cf
     (return . fromIntegral @Int . read . takeWhile isNumber . dropWhile (not.isNumber))
 
 getPIDCompl :: XP.XPConfig -> X XP.ComplFunction
