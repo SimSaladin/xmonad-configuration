@@ -73,6 +73,7 @@ data Font = Font
   { fontFamily :: String
   , fontSize   :: Maybe FontSize
   , fontStyle  :: Maybe FontStyle
+  , fontOffset :: Maybe Int -- ^ For XMobar
   } deriving (Eq)
 
 instance Show Font where
@@ -84,7 +85,7 @@ instance Show Font where
                  []   -> ""
 
 instance X.Default Font where
-  def = Font "monospace" def def
+  def = Font "monospace" def def def
 
 data FontSize  = PixelSize Int | PointSize Double
   deriving (Eq)

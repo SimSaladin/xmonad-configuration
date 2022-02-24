@@ -97,10 +97,22 @@ setFontsB []           = mempty
 setFontsB (main:extra) = modifyConfigB $ \cfg -> cfg
   { XB.font            = show main
   , XB.additionalFonts = show <$> extra
+  , XB.textOffset      = offset main
+  , XB.textOffsets     = offset <$> extra
   }
+    where
+      offset fn = case MyTheme.fontOffset fn of
+                      Nothing  -> -1
+                      Just off -> off
 
 litB :: String -> ConfigB
 litB = LitB
+
+whenB :: IO Bool -> ConfigB -> ConfigB
+whenB cond a = OnIfB cond a mempty
+
+ifB :: IO Bool -> ConfigB -> ConfigB -> ConfigB
+ifB = OnIfB
 
 wrapB :: (String -> String) -> ConfigB -> ConfigB
 wrapB = ApplyB

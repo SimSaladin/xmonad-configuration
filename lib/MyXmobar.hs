@@ -26,87 +26,99 @@ module MyXmobar
   , exitHook
   ) where
 
-import           XMonad                        hiding (spawn, title)
-import qualified XMonad.StackSet               as W
+import           XMonad                               hiding (spawn, title)
+import qualified XMonad.StackSet                      as W
 
 --import           XMonad.Actions.CopyWindow     (wsContainingCopies)
-import           XMonad.Actions.WorkspaceNames (workspaceNamesPP)
-import qualified XMonad.Hooks.StatusBar        as SB
-import           XMonad.Hooks.StatusBar.PP     (PP(..), dynamicLogString, pad, shorten, wrap, xmobarRaw)
-import qualified XMonad.Util.ExtensibleState   as XS
+--import           XMonad.Actions.WorkspaceNames (workspaceNamesPP)
+import qualified XMonad.Actions.DynamicWorkspaceOrder as DO
+import qualified XMonad.Hooks.StatusBar               as SB
+import           XMonad.Hooks.StatusBar.PP            (PP(..), dynamicLogString, pad, shorten, wrap, xmobarRaw)
+import qualified XMonad.Util.ExtensibleState          as XS
 import           XMonad.Util.Loggers
 import           XMonad.Util.PureX
 
-import           Graphics.X11.Xinerama         (getScreenInfo)
+import           Graphics.X11.Xinerama                (getScreenInfo)
 
-import           Codec.Binary.UTF8.String      (encodeString)
-import qualified Control.Exception             as E
+import           Codec.Binary.UTF8.String             (encodeString)
+import qualified Control.Exception                    as E
 import           Control.Monad
 import           Data.IORef
-import qualified Data.Map                      as Map
+import qualified Data.Map                             as Map
 import           Data.Maybe
 import           Prelude
-import qualified System.IO                     as IO
-import           System.IO.Unsafe              (unsafePerformIO)
-import qualified System.Posix                  as Posix
-import           System.Timeout                (timeout)
-import           Text.Printf                   (printf)
+import qualified System.IO                            as IO
+import           System.IO.Unsafe                     (unsafePerformIO)
+import qualified System.Posix                         as Posix
+import           System.Timeout                       (timeout)
+import           Text.Printf                          (printf)
 
 import           MyRun
 import           MyTheme
 import           StatusBar.XMobar
-import qualified Xmobar                        as XB
+import qualified Xmobar                               as XB
 
 -- * New stuff
 
 myStatusBars :: XConfig l -> XConfig l
-myStatusBars = SB.dynamicSBs mkStatusBarConfig
-  -- TODO: add this log hook only once:
-  -- namedLoggersLogHook myFocusedPP
+myStatusBars xc = SB.dynamicSBs mkStatusBarConfig xc { logHook = logHook xc <+> namedLoggersLogHook myFocusedPP }
 
 mkStatusBarConfig :: ScreenId -> IO SB.StatusBarConfig
 mkStatusBarConfig screenId = do
   res <- myStatusBar screenId
   case res of
     Just h -> return def
-      { SB.sbLogHook = do
-        when (screenId == S 0) $ namedLoggersLogHook myFocusedPP -- XXX hacky
-        current <- curScreenId
-        let thisPP = if current == screenId then myFocusedPP else myUnfocusedPP
-        str <- run thisPP
-        void $ userCode $ io $ hPutStrLn h str
+      { SB.sbLogHook = run h
       , SB.sbStartupHook = trace $ "Started status bar for screen: " ++ show screenId
-      , SB.sbCleanupHook = void $ io $ partialCleanup screenId
+      , SB.sbCleanupHook = sbCleanup screenId
       }
     Nothing -> return def
   where
-    run = workspaceNamesPP >=> dynamicLogString
+    run h = do
+      current <- curScreenId
+      let thisPP = if current == screenId then myFocusedPP else myUnfocusedPP
+      str <- workspaceNamesPP thisPP >>= dynamicLogString
+      void $ userCode $ io $ hPutStrLn h str
 
 -- * XMobar Config
+
+-- Fonts
+xbFontDefault       ,xbFontWqyMicroHei   ,xbFontTerminessNerd ,xbFontNotoSymbols2  ,xbFontMono          ,xbFontMonoFull      ,xbFontSansFull      :: String -> String
+xbFontDefault       = xmobarFont 0 -- CJK
+xbFontWqyMicroHei   = xmobarFont 1 -- CJK
+xbFontTerminessNerd = xmobarFont 2 -- symbols
+xbFontNotoSymbols2  = xmobarFont 3 -- symbols
+xbFontMono          = xbFontDefault
+xbFontMonoFull      = xmobarFont 4 -- monospace, larger
+xbFontSansFull      = xmobarFont 5 -- sans-serif, larger
 
 -- | Generate XMobar config
 myXBConfig :: ScreenId -> Rectangle -> Map.Map NamedLoggerId FilePath -> IO XB.Config
 myXBConfig (S sid) sr pipes = fromConfigB $
      modifyConfigB (\cfg -> cfg { XB.position = XB.OnScreen sid XB.Top })
   <> modifyConfigB (\cfg -> cfg { XB.bgColor = colBase03, XB.fgColor = colBase0, XB.allDesktops = False })
-  <> setFontsB
-      -- normal
-      [ def { fontFamily = "Noto Sans",              fontSize = Just (PointSize 7) }
-      -- cjk
-      , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 7.5) } -- 1
-      -- symbols
-      , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8.2) } -- 2
-      , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 8.5) } -- 3
-      -- mono
-      , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 7) } -- 4
-      , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- 5
-      -- normal
-      , def { fontFamily = "Noto Sans",              fontSize = Just (PointSize 8.2) } -- 6
+  <> modifyConfigB (\cfg -> cfg { XB.borderWidth = 0 })
+  <> ifB (widthAtLeast 2500)
+    (setFontsB
+      [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 7) } -- default 0
+      , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 7), fontOffset = Just 16 } -- CJK 1
+      , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8), fontOffset = Just 16 } -- symbols 2
+      , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7), fontOffset = Just 18 } -- symbols 3
+      , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- monospace 4
+      , def { fontFamily = "Noto Sans",              fontSize = Just (PointSize 8) } -- normal 5
       ]
-  <> modifyConfigB (\cfg -> cfg { XB.textOffsets = [-1,19,18,19,-1,-1] })
-  --
-  <> litB enspace <> wrapB xbFontMonoFull (pipeReaderB "xmonad" "/dev/fd/0")
-  <> litB emspace <> mpdB mpdArgs 50
+    )
+    (setFontsB
+      [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 6) } -- default 0
+      , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 6), fontOffset = Just 13 } -- CJK 1
+      , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8), fontOffset = Just 16 } -- symbols 2
+      , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7), fontOffset = Just 18 } -- symbols 3
+      , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 6) } -- monospace 4
+      , def { fontFamily = "Noto Sans",              fontSize = Just (PointSize 6) } -- normal 5
+      ]
+    )
+  <> litB enspace <> pipeReaderB "xmonad" "/dev/fd/0"
+  <> whenB (widthAtLeast 2500) (litB emspace <> mpdB mpdArgs 50)
   <> "}"
   <> litB emspace <> bufferedPipeReaderB [ (time, False, fp) | (k, fp) <- Map.toList pipes, let time = myPipeTimeout k ]
   <> "{"
@@ -120,10 +132,12 @@ myXBConfig (S sid) sr pipes = fromConfigB $
     , alsaB "default" "Master" volumeArgs
     , litB symKbd <> kbdAndLocks
     , litB symBTC <> btcPrice 600
-    , weatherB skyConditions "LOWG" (weatherArgs "Graz") 1800
+    , whenB (widthAtLeast 2500) $ weatherB skyConditions "LOWG" (weatherArgs "Graz") 1800
     , litB symClock <> dateZoneB dateFmt "" "" 10
     ]
   where
+    widthAtLeast w = return $ rect_width sr >= w
+
     myPipeTimeout k = fromMaybe (secs 15) $ lookup k [(NLogTitle, 0)]
     secs n = n * 10
 
@@ -133,32 +147,22 @@ myXBConfig (S sid) sr pipes = fromConfigB $
 
     underline = box' def{ boxType = BBottom, boxColor = colBase01, boxMargin = [0,3,0,0] }
 
-    xbFontSans          = xmobarFont 0 -- normal
-    xbFontSansFull      = xmobarFont 6 -- normal
-    xbFontWqyMicroHei   = xmobarFont 1 -- CJK
-    xbFontTerminessNerd = xmobarFont 2 -- symbols
-    xbFontNotoSymbols2  = xmobarFont 3 -- symbols
-    xbFontMono          = xmobarFont 4 -- monospace
-    xbFontMonoFull      = xmobarFont 5 -- monospace
-
-    symCpu    = fg colBase1 $ xbFontTerminessNerd "\57958 " <> thinsp -- 
+    symCpu    = fg colBase1 $ xbFontTerminessNerd "\57958 " <> hairsp -- 
     symMem    = fg colBase1 $ xbFontTerminessNerd "\63578 " -- <> hairsp -- 
     symNet    = fg colBase1 $ xbFontTerminessNerd "\62736 " -- <> hairsp -- "?" alt: ⇅
     symBTC    = fg colBase1 $ xbFontTerminessNerd "\63147" <> hairsp -- ""
     symKbd    = fg colBase1 $ xbFontTerminessNerd "\63506 " -- <> hairsp -- ""
     symClock  = fg colBase1 $ xbFontTerminessNerd "\63055 " -- <> hairsp -- ""
-    symVolOn  = xbFontTerminessNerd "\61480 " -- ""
-    symVolOff = xbFontTerminessNerd "\61478 " -- ""
+    symVolOn  = xbFontTerminessNerd "\61480 " <> hairsp -- ""
+    symVolOff = xbFontTerminessNerd "\61478 " <> hairsp -- ""
     symPlay   = xbFontTerminessNerd "\61515 " -- <> hairsp -- "\58882" ">>"
     symPause  = xbFontTerminessNerd "\61516 " -- <> hairsp -- "\63715" "||"
     symStop   = xbFontTerminessNerd "\61517 " -- <> hairsp -- "><"
     -- "🌡" XXX
 
-    kbdAndLocks =
-      wrapB xbFontMono kbdB <> litB hairsp <>
-      wrapB xbFontMono (fgB colOrange locksB)
+    kbdAndLocks = kbdB <> litB hairsp <> fgB colOrange locksB
 
-    btcPrice = wrapB xbFontMono . comB "cat" ["/tmp/xmobar.ticker"]
+    btcPrice = comB "cat" ["/tmp/xmobar.ticker"]
 
     dateFmt = sepByConcat puncsp [weeknum, weekday, daymonth, hourmin <> seconds, zone]
         where
@@ -187,7 +191,9 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       , ("overcast","☁")
       , ("partly cloudy", "⛅")
       , ("mostly cloudy", "🌧")
-      , ("considerable cloudiness", "⛈")]
+      , ("considerable cloudiness", "⛈")
+      , ("", "🌡")
+      ]
 
     networkArgs = def
       { monTemplate    = sepByConcat puncsp [dev, tx, rx]
@@ -198,9 +204,9 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       , monLowColor    = colBase01
       , monSuffix      = True
       } where
-        dev = "<dev>"
-        tx  = xbFontMono "<tx>"
-        rx  = xbFontMono "<rx>"
+        dev = xbFontWqyMicroHei "<dev>"
+        tx  = "<tx>"
+        rx  = "<rx>"
 
     multiCpuArgs = def
       { monTemplate    = xbFontMonoFull "<total>%"
@@ -220,7 +226,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       , monLowColor    = colBase01
       } where
         fmt1 :: Int -> String
-        fmt1 n = boxP 2 $ wrap hairsp thinsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<cpu%i>" n <> "%")
+        fmt1 n = boxP 2 $ xbFontWqyMicroHei $ wrap hairsp thinsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<cpu%i>" n <> "%")
 
     topMemArgs = def
       { monTemplate    = sepByConcat puncsp $ map fmt1 [1..2]
@@ -231,7 +237,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       , monLowColor    = colBase01
       } where
         fmt1 :: Int -> String
-        fmt1 n = boxP 2 $ wrap hairsp hairsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<mem%i>" n)
+        fmt1 n = boxP 2 $ xbFontWqyMicroHei $ wrap hairsp hairsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<mem%i>" n)
 
     memoryArgs = def
       { monTemplate    = xbFontMonoFull "<usedratio>%"
@@ -253,7 +259,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       }
 
     mpdArgs = def
-      { monTemplate      = xbFontWqyMicroHei $ sepByConcat thinsp [artist <> fg colBase01 oendash <> title, album, statei, xbFontMono flags]
+      { monTemplate      = xbFontWqyMicroHei $ sepByConcat thinsp [xbFontDefault statei, artist <> fg colBase01 oendash <> title, album, xbFontMono flags]
       , monFieldWidthMax = 30
       , monFieldEllipsis = "…"
       , monExtraArgs     = [ "-P", fg colGreen  symPlay , "-Z", fg colYellow symPause , "-S", fg colOrange symStop ]
@@ -281,21 +287,29 @@ myFocusedPP = def
   , ppCurrent         = fg colMagenta
   , ppHidden          = fg colBase1
   , ppHiddenNoWindows = fg colBase01
+  , ppSep             = " "
   , ppLayout          = last . words
   , ppTitle           = xmobarFont 1 . pad . fg colBase1 . xmobarRaw . shorten 128
-  , ppRename          = \s w -> maybe "" (\k -> fg colYellow $ k ++ ":") (Map.lookup (W.tag w) ppTagKeys) ++ s
+  --, ppRename          = \s w -> maybe "" (\k -> fg colYellow $ k ++ ":") (Map.lookup (W.tag w) ppTagKeys) ++ s
   , ppOrder           = \(ws : layout : title : xs) -> ws : layout : xs
-  } where
-    ppTagKeys = Map.fromList $ zip (map show [1..]) (map (:[]) ['a'..'z'])
+  }
 
-    -- layoutParts s = xmobarRaw (unwords $ init (words s)) ++ " " ++ fg colMagenta  (xmobarRaw $ last ("":words s))
+workspaceNamesPP :: PP -> X PP
+workspaceNamesPP pp = do
+  wsSort <- DO.getSortByOrder
+  tags <- gets (wsSort . W.workspaces . windowset)
+  let ppTagKeys = Map.fromList $ zip (map W.tag tags) (map (:[]) ['a'..'z'])
+  return pp { ppSort            = DO.getSortByOrder
+     --, ppRename = ppRename pp >=>
+     , ppRename          = \s w -> maybe "" (\k -> fg colYellow $ k ++ ":") (Map.lookup (W.tag w) ppTagKeys) ++ s
+     }
 
 myUnfocusedPP :: PP
 myUnfocusedPP = myFocusedPP { ppCurrent = fg colBlue }
 
 exitHook :: X ()
-exitHook = cleanupNamedLoggers >> io cleanup
--- XXX the "cleanup" is likely unnecessary. X.H.StatusBar should take care of that.
+exitHook = cleanupNamedLoggers >> io sbCleanupAll
+-- XXX the "sbCleanupAll" is likely unnecessary. X.H.StatusBar should take care of that.
 
 -- * Named Loggers
 
@@ -327,8 +341,10 @@ addLogListener k s hs = io $ atomicModifyIORef namedLoggersRef $ \m -> (Map.inse
 
 cleanupNamedLoggers :: MonadIO m => m ()
 cleanupNamedLoggers = io $ do
+    trace "Cleaning up named loggers..."
     logxs <- readIORef namedLoggersRef
     forM_ [h | (mf,mu) <- Map.elems logxs >>= Map.elems, Just h <- [mf,mu]] (catchIO . IO.hClose)
+    trace "Named loggers cleaned up."
 
 namedLogLazy :: NamedLoggerId -> Logger -> X ()
 namedLogLazy k lgr = lgr >>= \ms -> whenJust ms logIt
@@ -384,20 +400,29 @@ myStatusBar screen@(S sid) = do
       withNamedLogInputs :: (Map.Map NamedLoggerId Posix.Fd -> IO a) -> IO a
       withNamedLogInputs = E.bracket
         (Map.fromList <$> mapM (mkLogFd screen) [minBound..maxBound])
-        (mapM_ Posix.closeFd)
+        closeLogFds
+
+      closeLogFds :: Map.Map NamedLoggerId Posix.Fd -> IO ()
+      closeLogFds = mapM_ $ catchIO . Posix.closeFd
 
       printFd = printf "/dev/fd/%i" . fromEnum
 
-cleanup :: IO ()
-cleanup = readIORef sbarHackRef >>= mapM_ (destroy . snd)
+sbCleanupAll :: MonadIO m => m ()
+sbCleanupAll = io (readIORef sbarHackRef) >>= mapM_ (terminate . snd)
 
-partialCleanup :: ScreenId -> IO ()
-partialCleanup sid = readIORef sbarHackRef >>= mapM_ destroy . lookup sid
+sbCleanup :: MonadIO m => ScreenId -> m ()
+sbCleanup sid = io (readIORef sbarHackRef) >>= mapM_ terminate . lookup sid
 
-destroy :: ProcessID -> IO ()
-destroy pId = void $ do
-  catchIO $ void $ Posix.signalProcess Posix.sigTERM pId
-  catchIO $ void $ Posix.getProcessStatus True False pId
+terminate :: MonadIO m => ProcessID -> m ()
+terminate pId = do
+  trace $ printf "Terminating statusbar process PID=%i" (fromEnum pId)
+  catchIO $ do
+    void $ Posix.signalProcess Posix.sigTERM pId
+    r <- timeout 500000 $ Posix.getProcessStatus True False pId
+    case r of
+      Nothing -> trace $ printf "Terminating statusbar failed (timeout), PID=%i" (fromEnum pId)
+      _       -> trace $ printf "Successfully terminated statusbar process PID=%i" (fromEnum pId)
+  trace $ printf "Cleaned up statusbar process PID=%i" (fromEnum pId)
 
 -- * TODO
 
@@ -412,15 +437,4 @@ destroy pId = void $ do
  -   | Just _ <- W.stack w >>= W.filter (`notElem` hiddens) = ppHidden pp
  -
 ppCopies = fg colYellow
-
- isHidden :: Query Bool
- isHidden = isInProperty "_NET_WM_STATE" "_NET_WM_STATE_HIDDEN"
-
-askScreenRectangle :: ScreenId -> IO Rectangle
-askScreenRectangle (S sid) = do
-  screenInfo <- E.bracket (openDisplay "") closeDisplay getScreenInfo
-  let r:rs = drop sid screenInfo
-      rss  = take sid screenInfo
-  when (any (r `containedIn`) (rs ++ rss)) $ error "fuck you"
-  return r
- -}
+-}
