@@ -2,3 +2,4 @@ xmonad-x86_64-linux
 /xmonad-contrib/
 /xmonad/
 .pre-commit-config.yaml
+/X11/
