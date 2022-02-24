@@ -1,10 +1,15 @@
 #!/bin/sh -e
 
+#method=nix
+method=stack
+
 cd "$(dirname "$0")" || exit 1
 
-attr=xmonad-x86_64-linux
 bin="${XDG_DATA_HOME:-"$HOME"/.local/share}/xmonad"
 exe="xmonad-$(uname -m)-linux"
+out=xmonad-x86_64-linux
+attr=xmonad-configuration
+attr=xmonad-configuration-fast
 
 case $1 in
 	''|--*) : ;;
@@ -15,17 +20,44 @@ case $1 in
 		;;
 esac
 
-out=$attr
-if flock -n -E 6 . nix-build -A "$attr" -o "$out"; then
-#if nix-build -A "$attr" -o "$out"; then
-#if true; then
-	# To update materialized nix
-	#nix-build -A stack-nix.passthru.updateMaterialized | bash
-	echo "Built $attr ($out). Installing to $bin/$exe"
-	ln -nsf "$(realpath -e "$out/bin/xmonad-x86_64-linux")" "$bin/$exe"
-	ln -nsf "$(realpath -e "$out/bin/xmonad-x86_64-linux")" ~/.cache/xmonad/"$exe"
-elif [ $? = 6 ]; then
-	echo "Failed to get lock on $(realpath .). Build already running probably. Waiting 5 minutes for it to finish."
-	flock --verbose -w 300 . sleep 0.3
-	echo "Build finished."
-fi
+success() {
+	res=$1
+	echo "Build success. Installing $res as $bin/$exe"
+	ln -nsf "$res" "$bin/$exe"
+	ln -nsf "$res" ~/.cache/xmonad/"$exe"
+}
+
+failure() {
+	ret=$1
+	case $ret in
+		6 )
+			echo "Failed to get lock on $(realpath .). Build already running probably. Waiting 5 minutes for it to finish."
+			flock --verbose -w 300 . sleep 0.3
+			echo "Build finished."
+			;;
+		* )
+			echo "Build failed."
+			exit "$ret"
+			;;
+	esac
+}
+
+case $method in
+	nix )
+		if flock -n -E 6 . nix build -L --log-format raw ".#$attr" -o "$out"; then
+			success "$(realpath -e "$out/bin/xmonad-x86_64-linux")"
+		else
+			failure "$?"
+		fi
+		;;
+	stack )
+		if flock -n -E 6 . stack build --no-haddock --no-haddock-deps; then
+			success "$(realpath -e "$(stack path --dist-dir)/build/xmonad-x86_64-linux/xmonad-x86_64-linux")"
+		else
+			failure "$?"
+		fi
+		;;
+	* )
+		exit 2
+		;;
+esac
