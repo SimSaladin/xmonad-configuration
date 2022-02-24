@@ -29,6 +29,7 @@ module MyDebug (
   debugIgnoreProps, debugEventHook, debugEventsFocusedWindow, myDebugManageHook, DebugCmd(..)
   ) where
 
+import           GHC.Word                         (Word64)
 import           XMonad
 import qualified XMonad.Hooks.DebugEvents         as DebugEvents
 import qualified XMonad.Hooks.DebugStack          as DebugStack
@@ -39,8 +40,9 @@ import qualified XMonad.Util.ExtensibleState      as XS
 import qualified XMonad.Util.Invisible            as Invisible
 import           XMonad.Util.NamedCommands
 
+
 import qualified Data.Set                         as Set
-import           Prelude                          (Show(show))
+import           Prelude
 
 data DebugXS = DebugXS { debugIgnoreProps   :: !(Atom -> Bool)
                        , debugEnableWindows :: !(Invisible.Invisible Maybe (Set.Set Window))
@@ -77,7 +79,20 @@ debugEventHook e = do
     PropertyEvent{..}         | not (ignoreProp ev_atom) -> DebugEvents.debugEventsHook e
     ExposeEvent{..}           | wEnabled ev_window       -> DebugEvents.debugEventsHook e
     ClientMessageEvent{..}    | wEnabled ev_window       -> DebugEvents.debugEventsHook e
+    ClientMessageEvent{ev_message_type = a, ev_data = vs} | (s:v1:v2:vals) <- vs    -> do
+      a' <- getAtom "_NET_WM_STATE"
+      when (a == a') $ do
+        xs <- mapM dumpAtom [v1,v2]
+        trace $ "CLIENT MESSAGE _NET_WM_STATE: " ++ show s ++ " " ++ show xs ++ " -> " ++ show vals
+      return (All True)
     _                                                    -> return (All True)
+
+dumpAtom :: Integral a => a -> X String
+dumpAtom i = atomName $ fromIntegral i
+
+atomName :: Word64 -> X String
+atomName a =  withDisplay $ \d ->
+  io $ fromMaybe ("(unknown atom " ++ show a ++ ")") <$> getAtomName d a
 
 debugEventsWindow :: Window -> X ()
 debugEventsWindow w = do
