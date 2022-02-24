@@ -6,18 +6,13 @@
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE PartialTypeSignatures     #-}
-{-# LANGUAGE RebindableSyntax          #-}
 {-# LANGUAGE RecordWildCards           #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeOperators             #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
--- misc
 {-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
--- For Prime
-{-# OPTIONS_GHC -Wno-unused-local-binds -Wno-unused-do-bind #-}
-
+-- {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 ------------------------------------------------------------------------------
 -- |
@@ -52,93 +47,89 @@
 
 module Main (main) where
 
-import qualified XMonad                              as X
-import qualified XMonad.StackSet                     as W
+import           Prelude
 
-import qualified XMonad.Actions.CopyWindow           as CW
-import           XMonad.Actions.CycleRecentWS        (cycleWindowSets)
-import           XMonad.Actions.CycleWS              (WSType(..))
-import qualified XMonad.Actions.CycleWS              as CycleWS
-import qualified XMonad.Actions.DynamicWorkspaces    as DynWS
-import qualified XMonad.Actions.FlexibleManipulate   as Flex
-import qualified XMonad.Actions.FloatKeys            as FloatKeys
-import qualified XMonad.Actions.FloatSnap            as FloatSnap
-import qualified XMonad.Actions.GridSelect           as GS
+import           XMonad                                hiding (spawn)
+import           XMonad.Prelude                        hiding (group)
+import qualified XMonad.StackSet                       as W
+
+import qualified XMonad.Actions.CopyWindow             as CW
+import           XMonad.Actions.CycleRecentWS          (cycleWindowSets)
+import           XMonad.Actions.CycleWS                (WSType(..))
+import qualified XMonad.Actions.CycleWS                as CycleWS
+import qualified XMonad.Actions.DynamicWorkspaceGroups as WSG
+import qualified XMonad.Actions.DynamicWorkspaceOrder  as DO
+import qualified XMonad.Actions.DynamicWorkspaces      as DynWS
+import qualified XMonad.Actions.FlexibleManipulate     as Flex
+import qualified XMonad.Actions.FloatKeys              as FloatKeys
+import qualified XMonad.Actions.FloatSnap              as FloatSnap
+import qualified XMonad.Actions.GridSelect             as GS
 import qualified XMonad.Actions.Minimize
-import qualified XMonad.Actions.Navigation2D         as Navigation2D
-import           XMonad.Actions.NoBorders            (toggleBorder)
-import           XMonad.Actions.OnScreen             (Focus(..), onScreen)
-import qualified XMonad.Actions.PhysicalScreens      as PScreen
-import qualified XMonad.Actions.RotSlaves            as RotSlaves
-import qualified XMonad.Actions.SpawnOn              as SpawnOn
-import qualified XMonad.Actions.UpdatePointer        as A (updatePointer)
-import qualified XMonad.Actions.WorkspaceNames       as WSNames
-import           XMonad.Config.Prime                 hiding (spawn, (>>))
-import qualified XMonad.Config.Prime                 as Arr ((>>))
-import qualified XMonad.Hooks.EwmhDesktops           as EWMH
-import           XMonad.Hooks.FadeWindows            (isFloating)
-import qualified XMonad.Hooks.FloatNext              as FloatNext
-import qualified XMonad.Hooks.InsertPosition         as InsertPosition
+import qualified XMonad.Actions.Navigation2D           as Navigation2D
+import           XMonad.Actions.NoBorders              (toggleBorder)
+import           XMonad.Actions.OnScreen               (Focus(..), onScreen)
+import qualified XMonad.Actions.PhysicalScreens        as PScreen
+import qualified XMonad.Actions.RotSlaves              as RotSlaves
+import qualified XMonad.Actions.SpawnOn                as SpawnOn
+import qualified XMonad.Actions.UpdatePointer          as A (updatePointer)
+import qualified XMonad.Hooks.EwmhDesktops             as EWMH
+import           XMonad.Hooks.FadeWindows              (isFloating)
+import qualified XMonad.Hooks.FloatNext                as FloatNext
+import qualified XMonad.Hooks.InsertPosition           as InsertPosition
 import qualified XMonad.Hooks.ManageDebug
-import qualified XMonad.Hooks.ManageDocks            as ManageDocks
+import qualified XMonad.Hooks.ManageDocks              as ManageDocks
 import           XMonad.Hooks.ManageHelpers
-import           XMonad.Hooks.Minimize               (minimizeEventHook)
-import           XMonad.Hooks.Place                  (placeFocused, placeHook, simpleSmart, smart, underMouse, withGaps)
-import qualified XMonad.Hooks.ToggleHook             as ToggleHook
-import           XMonad.Hooks.UrgencyHook            (focusUrgent)
-import qualified XMonad.Hooks.UrgencyHook            as Urgency
+import           XMonad.Hooks.Minimize                 (minimizeEventHook)
+import           XMonad.Hooks.Place                    (placeFocused, placeHook, simpleSmart, smart, underMouse, withGaps)
+import qualified XMonad.Hooks.ToggleHook               as ToggleHook
+import           XMonad.Hooks.UrgencyHook              (focusUrgent)
+import qualified XMonad.Hooks.UrgencyHook              as Urgency
 import           XMonad.Hooks.WallpaperSetter
-import qualified XMonad.Layout.BinarySpacePartition  as BSP
-import           XMonad.Layout.BoringWindows         (boringWindows)
-import qualified XMonad.Layout.BoringWindows         as BW
-import qualified XMonad.Layout.Fullscreen            as FS
-import           XMonad.Layout.GridVariants          (ChangeGridGeom(..), ChangeMasterGridGeom(..), Grid(Grid), SplitGrid(..))
-import qualified XMonad.Layout.GridVariants          as GridV (Orientation(..))
-import qualified XMonad.Layout.LayoutHints           as LayoutHints
-import           XMonad.Layout.Magnifier             (magnifierOff)
-import qualified XMonad.Layout.Magnifier             as Magnifier
-import           XMonad.Layout.Maximize              (maximizeRestore, maximizeWithPadding)
-import           XMonad.Layout.Minimize              (minimize)
-import qualified XMonad.Layout.Mosaic                as Mosaic
-import qualified XMonad.Layout.MouseResizableTile    as MRT
-import qualified XMonad.Layout.MultiToggle           as MultiToggle
+import qualified XMonad.Layout.BinarySpacePartition    as BSP
+import           XMonad.Layout.BoringWindows           (boringWindows)
+import qualified XMonad.Layout.BoringWindows           as BW
+import qualified XMonad.Layout.Fullscreen              as FS
+import           XMonad.Layout.GridVariants            (ChangeGridGeom(..), ChangeMasterGridGeom(..), Grid(Grid))
+--import qualified XMonad.Layout.GridVariants          as GridV (Orientation(..))
+import qualified XMonad.Layout.LayoutHints             as LayoutHints
+import qualified XMonad.Layout.Magnifier               as Magnifier
+import           XMonad.Layout.Maximize                (maximizeRestore, maximizeWithPadding)
+import           XMonad.Layout.Minimize                (minimize)
+import qualified XMonad.Layout.Mosaic                  as Mosaic
+import qualified XMonad.Layout.MouseResizableTile      as MRT
+import qualified XMonad.Layout.MultiToggle             as MultiToggle
 import           XMonad.Layout.MultiToggle.Instances
-import qualified XMonad.Layout.NoBorders             as NoBorders
-import           XMonad.Layout.OneBig                (OneBig(OneBig))
-import           XMonad.Layout.Reflect               (REFLECTX(..), REFLECTY(..), reflectHoriz)
-import           XMonad.Layout.Spacing               (Border(Border), spacingRaw, toggleScreenSpacingEnabled, toggleWindowSpacingEnabled)
-import           XMonad.Layout.ThreeColumns          (ThreeCol(ThreeColMid))
-import           XMonad.Layout.WindowNavigation      (Navigate(..), configurableNavigation, navigateColor)
-import qualified XMonad.Prompt                       as XP
-import           XMonad.Prompt.ConfirmPrompt         (confirmPrompt)
-import           XMonad.Prompt.Input                 (inputPromptWithCompl, (?+))
-import qualified XMonad.Prompt.Input                 as XP.Input
-import qualified XMonad.Prompt.Pass                  as XP.Pass
-import qualified XMonad.Prompt.Shell                 as XP.Shell
-import qualified XMonad.Prompt.Window                as XP (WindowPrompt(Goto), allWindows, windowPrompt)
-import qualified XMonad.Prompt.Workspace             as XP (Wor(Wor))
-import           XMonad.Util.NamedActions            (showKm)
+import qualified XMonad.Layout.NoBorders               as NoBorders
+import           XMonad.Layout.OneBig                  (OneBig(OneBig))
+import           XMonad.Layout.Reflect                 (REFLECTX(..), REFLECTY(..), reflectHoriz)
+import           XMonad.Layout.Spacing                 (Border(Border), spacingRaw, toggleScreenSpacingEnabled, toggleWindowSpacingEnabled)
+import           XMonad.Layout.ThreeColumns            (ThreeCol(ThreeColMid))
+import           XMonad.Layout.WindowNavigation        (Navigate(..), configurableNavigation, navigateBrightness, navigateColor)
+import qualified XMonad.Prompt                         as XP
+import           XMonad.Prompt.ConfirmPrompt           (confirmPrompt)
+import           XMonad.Prompt.Input                   (inputPromptWithCompl, (?+))
+import qualified XMonad.Prompt.Input                   as XP.Input
+import qualified XMonad.Prompt.Pass                    as XP.Pass
+import qualified XMonad.Prompt.Shell                   as XP.Shell
+import qualified XMonad.Prompt.Window                  as XP (WindowPrompt(Goto), allWindows, windowPrompt)
+import qualified XMonad.Prompt.Workspace               as XP (Wor(Wor))
+import           XMonad.Util.NamedActions              (showKm)
 import           XMonad.Util.PureX
-import qualified XMonad.Util.Rectangle               as Rect
-import           XMonad.Util.Types                   (Direction1D(..), Direction2D(..))
-import qualified XMonad.Util.WindowProperties        as WinProp
+import qualified XMonad.Util.Rectangle                 as Rect
+import           XMonad.Util.Types                     (Direction1D(..), Direction2D(..))
+import qualified XMonad.Util.WindowProperties          as WinProp
 
-import           Control.Applicative
-import           Control.Monad                       hiding ((>>), (>>=))
-import qualified Control.Monad
-import qualified Data.List                           as L
-import qualified Data.Map                            as M
-import           Data.Maybe
-import           Data.Monoid
+import qualified Data.List                             as L
+import qualified Data.Map                              as M
 import           Data.Proxy
-import           Data.Ratio                          ((%))
-import           System.Directory                    (doesFileExist)
+import           Data.Ratio                            ((%))
+import           System.Directory                      (doesFileExist)
 import qualified System.Environment
-import           System.Exit                         (exitSuccess)
-import           System.FilePath                     ((</>))
-import qualified System.Posix                        as Posix
-import           Text.Printf                         (printf)
-import           Text.Read                           (readMaybe)
+import           System.Exit                           (exitSuccess)
+import           System.FilePath                       ((</>))
+import qualified System.Posix                          as Posix
+import           Text.Printf                           (printf)
+import           Text.Read                             (readMaybe)
 
 import           DesktopEntries
 import qualified MyDebug
@@ -148,119 +139,141 @@ import qualified MyXmobar
 import           Scratchpads
 import           SpawnOnByPPID
 import           XMonad.Config.CommandsKeysF
-import qualified XMonad.Config.CommandsKeysF         as CF
-import           XMonad.Hooks.EwmhDesktopsEx         (setEWMHDesktopGeometry)
+import qualified XMonad.Config.CommandsKeysF           as CF
+import           XMonad.Hooks.EwmhDesktopsEx           (setEWMHDesktopGeometry)
 import           XMonad.Layout.Hinted
-import           XMonad.Prompt.Environ               (environPrompt)
-import qualified XMonad.Prompt.Qutebrowser           as XP.QB
-import qualified XMonad.Util.DesktopNotifications    as Notify
+import           XMonad.Prompt.Environ                 (environPrompt)
+import qualified XMonad.Prompt.Qutebrowser             as XP.QB
+import qualified XMonad.Util.DesktopNotifications      as Notify
+import qualified XMonad.Util.ExtensibleState           as XS
+import           XMonad.Util.Minimize
 import           XMonad.Util.NamedCommands
 import           XMonad.Util.NamedCommands.Orphans
 
-import           Data.Int                            (Int32)
+import           Data.Int                              (Int32)
 
 -- * Main
 
 main :: IO ()
-main = xmonad configPrime
+main = xmonad =<< myConfig
 
 -- * Config
 
-configPrime :: _ => Prime l _
-configPrime = do
-  terminal           =: "my-terminal"
-  borderWidth        =: 1
-  focusedBorderColor =: colCyan
-  normalBorderColor  =: colBase02
-  modMask            =: mod4Mask
-  focusFollowsMouse  =: True
-  clickJustFocuses   =: False
-  clientMask         =+ focusChangeMask -- default: structureNotifyMask .|. enterWindowMask .|. propertyChangeMask@
-  rootMask           =+ focusChangeMask -- default: substructureRedirectMask .|. substructureNotifyMask .|. enterWindowMask .|. leaveWindowMask .|. structureNotifyMask .|. buttonPressMask
+myConfig :: IO (XConfig _)
+myConfig =
+    debugging
+  . restoreWorkspaces
+  . urgencyHook Notify.urgencyHook
+  . myWallpapers
+  . doEWMH
+  . applyC (\xc -> xc
+      { startupHook = startupHook xc
+              <+> Notify.startupHook
+              <+> scratchpadsStartupHook myScratchpads
+      , handleEventHook =
+              LayoutHints.hintsEventHook       -- Refreshes the layout whenever a window changes its hints.
+              <+> minimizeEventHook    -- Handle minimize/maximize requests
+              <+> removeMinimizedState
+              <+> FS.fullscreenEventHook
+              <+> handleEventHook xc
+      , logHook = logHook xc <+> myUpdatePointer (0.5, 0.5) (0.4, 0.4)
+      })
+  . applyIO' (CF.addAll myShowKeys myCmds)
+  . statusbars
+  . return $ def
+  { terminal           = "my-terminal"
+  , borderWidth        = 1
+  , focusedBorderColor = colCyan
+  , normalBorderColor  = colBase02
+  , modMask            = mod4Mask
+  , focusFollowsMouse  = True
+  , clickJustFocuses   = False
+  , clientMask         = clientMask def .|. focusChangeMask -- default: structureNotifyMask .|. enterWindowMask .|. propertyChangeMask@
+  , rootMask           = rootMask def .|. focusChangeMask -- default: substructureRedirectMask .|. substructureNotifyMask .|. enterWindowMask .|. leaveWindowMask .|. structureNotifyMask .|. buttonPressMask
+  , handleEventHook    = myRestartEventHook <> handleEventHook def
+  , manageHook = myManageHook
+      <+> ToggleHook.toggleHook "keepfocus" (InsertPosition.insertPosition InsertPosition.Above InsertPosition.Older) -- default: Above Never
+      <+> FS.fullscreenManageHook
+      <+> SpawnOn.manageSpawn
+      <+> FloatNext.floatNextHook
+  , layoutHook = myLayout
+  }
+    where
+    urgencyHook :: (Urgency.UrgencyHook h, LayoutClass l Window) => h -> XConfig' l
+    urgencyHook = applyC . flip Urgency.withUrgencyHookC Urgency.urgencyConfig { Urgency.suppressWhen = Urgency.Focused }
 
-  manageHook =: (MyDebug.myDebugManageHook <+> XMonad.Hooks.ManageDebug.maybeManageDebug)
-  manageHook =+ myManageHook
-  manageHook =+ ManageDocks.manageDocks
-  manageHook =+ ToggleHook.toggleHook "keepfocus" (InsertPosition.insertPosition InsertPosition.Above InsertPosition.Older) -- default: Above Never
-  manageHook =+ (FS.fullscreenManageHook <+> SpawnOn.manageSpawn <+> FloatNext.floatNextHook)
+    statusbars = applyC $ \xc -> MyXmobar.myStatusBars . ManageDocks.docks $ xc
+      -- { handleEventHook = docksEventHookExtra <+> handleEventHook xc }
 
-  myLayout
+    doEWMH = applyC $ \xc -> EWMH.ewmh $ xc
+      { startupHook = setEWMHDesktopGeometry <> startupHook xc }
 
-  apply $ MyXmobar.myStatusBars . ManageDocks.docks
+    debugging = applyC $ \xc -> xc
+      { handleEventHook = MyDebug.debugEventHook <+> handleEventHook xc
+      , manageHook      = MyDebug.myDebugManageHook <+> XMonad.Hooks.ManageDebug.maybeManageDebug <+> manageHook xc }
 
-  handleEventHook =+ docksEventHookExtra
+    -- Remove destroyed windows from the list of minimized windows, so that the state is reset next time that windowid
+    -- is used.
+    removeMinimizedState DestroyWindowEvent{..} = do
+      XS.modify $ \x@Minimized { rectMap = rm, minimizedStack = ms } -> x { minimizedStack = L.delete ev_window $ minimizedStack x }
+      return (All True)
 
-  applyIO $ CF.addAll myShowKeys myCmds
+    -- fix 'pinentry-qt' which starts minimized and then uses raising to top as signal to maximize.
+    -- Seriously: https://dev.gnupg.org/rP9dd46926f8d50cca059bbf5ea7aa003b9199a05f
+    removeMinimizedState ClientMessageEvent{ev_message_type = a, ev_data = vs, ev_window = w}
+      | 1:v1:v2:_ <- vs = do
+        a' <- getAtom "_NET_WM_STATE"
+        v' <- getAtom "_NET_WM_STATE_ABOVE"
+        when (a == a' && v' == fromIntegral v1) $ XMonad.Actions.Minimize.maximizeWindow w
+        return (All True)
+    removeMinimizedState _ = return (All True)
 
-  startupHook =+ (Notify.startupHook
-    <+> restoreWorkspaces
-    <+> setEWMHDesktopGeometry
-    <+> scratchpadsStartupHook myScratchpads)
+type XConfig' l = IO (XConfig l) -> IO (XConfig l)
 
-  handleEventHook =+ myRestartEventHook
-  handleEventHook =+ MyDebug.debugEventHook
+applyC :: (XConfig l -> XConfig l) -> XConfig' l
+applyC f xc = xc <&> f
 
-  handleEventHook =+ FS.fullscreenEventHook
-  handleEventHook =+ minimizeEventHook    -- Handle minimize/maximize requests
-  handleEventHook =+ LayoutHints.hintsEventHook       -- Refreshes the layout whenever a window changes its hints.
+applyIO' :: (XConfig l -> IO (XConfig l)) -> XConfig' l
+applyIO' f xc = xc >>= f
 
-  logHook =+ XMonad.Hooks.ManageDebug.manageDebugLogHook
-  --logHook =+ EWMH.ewmhDesktopsLogHookCustom id
-  logHook =+ myUpdatePointer (0.5, 0.5) (0.4, 0.4)
-  logHook =+ wallpaperSetter myWallpaperConf
+-- * Persistent workspaces
 
-  urgencyHook Notify.urgencyHook
+wsFile :: MonadIO m => m FilePath
+wsFile = do
+  dir <- cacheDir <$> io getDirectories
+  return (dir </> "workspaces")
 
-  apply EWMH.ewmh
+restoreWorkspaces :: XConfig' l
+restoreWorkspaces = applyIO' $ \xc -> readState <&> maybe xc (go xc)
   where
-    (>>) = (Arr.>>)
+    readState :: IO (Maybe [(Int, String)])
+    readState = do
+      file <- wsFile
+      whenM' (doesFileExist file) $ do
+        contents <- readFile file
+        case readMaybe contents of
+          Nothing  -> trace "failed to read workspaces file" >> return Nothing
+          Just wss -> return $ Just $ zip [0..] wss
 
-    urgencyHook :: (Urgency.UrgencyHook h, LayoutClass l Window) => h -> Prime l l
-    urgencyHook = apply . flip Urgency.withUrgencyHookC Urgency.urgencyConfig { Urgency.suppressWhen = Urgency.Focused }
-
-restoreWorkspaces :: X ()
-restoreWorkspaces = do
-  dir <- asks (cacheDir . directories)
-  let file = dir </> "workspaces"
-  io $ putStrLn $ "File is: " ++ file
-  io (doesFileExist file) >>= \case
-    True  -> do
-      contents <- io (readFile file)
-      case readMaybe contents of
-        Nothing -> void $ trace "failed to read workspaces file"
-        Just (names :: [(String, String)]) -> do
-          getName <- WSNames.getWorkspaceNames'
-          forM_ names $ \(tag, name) ->
-            when (isNothing $ getName tag) $ WSNames.setWorkspaceName tag name
-    False -> return ()
-  where
-    (>>) = (Control.Monad.>>)
-
--- TODO restore the number of workspaces too
--- restoreWorkspaces :: XConfig l -> IO (XConfig l)
--- restoreWorkspaces xc = do
---   dir <- cacheDir <$> getDirectories
---   let file = dir </> "workspaces"
---   putStrLn $ "File is: " ++ file
---   putStrLn $ "Current workspaces are: " ++ show (X.workspaces xc)
---   doesFileExist file >>= \case
---     True  -> do
---       readMaybe <$> readFile file >>= \case
---         Nothing -> trace "failed to read workspaces file" >> return xc
---         Just ws -> return xc { X.workspaces = ws }
---       return xc
---     False -> return xc
---   where
---     (>>) = (Control.Monad.>>)
+    go xc wss = xc { workspaces = map snd wss }
 
 saveWorkspaces :: X ()
 saveWorkspaces = do
-  dir <- asks (cacheDir . directories)
-  let file = dir </> "workspaces"
-  tags <- gets (W.workspaces . windowset)
-  getName <- WSNames.getWorkspaceNames'
-  let names = [ (W.tag t, fromMaybe (W.tag t) (getName $ W.tag t)) | t <- tags]
+  wsSort <- DO.getSortByOrder
+  tags <- gets (wsSort . W.workspaces . windowset)
+  let names = [ W.tag t | t <- tags]
+  file <- wsFile
   io $ writeFile file (show names)
+
+  dir <- cacheDir <$> io getDirectories
+  let statefile = dir </> "extState"
+  extst <- gets (fmap f . extensibleState)
+  io $ writeFile statefile (show extst)
+    where
+      f :: Either String StateExtension -> (String, String)
+      f x@(Left s)                        = (show (typeOf x), s)
+      f x@(Right StateExtension{})        = (show (typeOf x), "n/a")
+      f x@(Right (PersistentExtension a)) = (show (typeOf x), show a)
 
 myScratchpads :: [Scratchpad]
 myScratchpads =
@@ -270,39 +283,39 @@ myScratchpads =
     ] ++ [mkPadDyn "dynamic" xpConfig idHook]
   where
     mhd  = doRFRR 0.2 0.1 0.6 0.6
-    mhd' = doRFRR 0.2 0.1 0.7 0.7 -- TODO
+    --mhd' = doRFRR 0.2 0.1 0.7 0.7 -- TODO
     doRFRR x y w h = doRectFloat (W.RationalRect x y w h)
 
-myLayout :: LayoutClass l Window => Prime l _
-myLayout = do
+myLayout :: _ Window
+myLayout =
+  mods $
   -- Default Layout
-  resetLayout BSP.emptyBSP
+  BSP.emptyBSP
   --  Other layouts
-  addLayout basicGrid
-  addLayout MRT.mouseResizableTileMirrored -- NOTE: mirror modifier fails for this because mouse. TODO: could switch MRT.isMirrored
+  ||| basicGrid
+  ||| MRT.mouseResizableTileMirrored -- NOTE: mirror modifier fails for this because mouse. TODO: could switch MRT.isMirrored
     { MRT.nmaster    = 2
     , MRT.masterFrac = 50%100
     , MRT.slaveFrac  = 50%100 }
-  addLayout (OneBig (2/3) (2/3))
-  addLayout (Tall 1 (3/100) (1/2))
-  addLayout (ThreeColMid 1 (1/30) (4/9))
-
-  -- Modifiers
-  -- NOTE: MIRROR with REFLECTX/Y is most intuitive when mirror goes first.
-  modifyLayout (MultiToggle.mkToggle1 MIRROR)
-  modifyLayout (MultiToggle.mkToggle1 REFLECTX)
-  modifyLayout (MultiToggle.mkToggle1 REFLECTY)
-  modifyLayout (MultiToggle.mkToggle1 NOBORDERS)
-  modifyLayout (MultiToggle.mkToggle1 HINT)
-  modifyLayout mySaneLayoutModifiers
+  ||| OneBig (2/3) (2/3)
+  ||| Tall 1 (3/100) (1/2)
+  ||| ThreeColMid 1 (1/30) (4/9)
   where
-    (>>) = (Arr.>>)
+  -- NOTE: MIRROR with REFLECTX/Y is most intuitive when mirror goes first.
+    mods =
+      mySaneLayoutModifiers
+      . MultiToggle.mkToggle1 HINT
+      . MultiToggle.mkToggle1 NOBORDERS
+      . MultiToggle.mkToggle1 REFLECTX
+      . MultiToggle.mkToggle1 REFLECTY
+      . MultiToggle.mkToggle1 MIRROR
 
     defaultGridRatio = 16/9
     basicGrid  = reflectHoriz (Grid defaultGridRatio)
-    splitGrid  = SplitGrid GridV.T 1 2 (11/18) (4/3) (5/100)
+    --splitGrid  = SplitGrid GridV.T 1 2 (11/18) (4/3) (5/100)
 
 
+mySpacing :: Integer -> Integer -> _
 mySpacing sd wd = spacingRaw True (f sd) True (f wd) True
   where f n = Border n n n n
 
@@ -315,17 +328,18 @@ mySaneLayoutModifiers =
     . MultiToggle.mkToggle1 NBFULL -- NOTE: This replaces the layout, including modifiers applied before it.
     . FS.fullscreenFull -- Fullscreen _NET_WM_STATE_FULLSCREEN layout support.
     . ManageDocks.avoidStruts -- NOTE: Apply avoidStruts late so that other modifiers aren't affected.
-    . magnifierOff
+    . Magnifier.magnify 1.3 (Magnifier.NoMaster 1) False
     . maximizeWithPadding 80
     . mySpacing 1 2
-    . configurableNavigation (navigateColor colBase00) -- NOTE: WindowNavigation interacts badly with some modifiers like "maximize" and "spacing", apply those after it.
-
+    -- TODO: spams lots of errors:
+    --  "xmonad: X11 error: BadValue (integer parameter out of range for operation), request code=91, error code=2"
+    . configurableNavigation {-(navigateBrightness 0)-} (navigateColor colBase00) -- NOTE: WindowNavigation interacts badly with some modifiers like "maximize" and "spacing", apply those after it.
 
 myCmds :: (LayoutClass l Window, Read (l Window)) => CF.Cmd l ()
 myCmds = CF.hinted "Commands" $ \helpCmd -> do
 
-  let unPScreen (PScreen.P s) = s
-      onPScreen f g a ps = PScreen.getScreen def ps ?+ \s -> windows (g >>= \x -> onScreen (f x) a s)
+  let --unPScreen (PScreen.P s) = s
+      --onPScreen f g a ps = PScreen.getScreen def ps ?+ \s -> windows (g >>= \x -> onScreen (f x) a s)
 
       toggle1 a = Toggle' a
 
@@ -338,11 +352,11 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
       mpc cmd    = spawn "mpc" [cmd] ? printf "MPD: %s" cmd
       clipmenu   = spawn "clipmenu" ["-p", "clipmenu", "-i"] ? "clipmenu"
 
-      volume, mic :: Int -> _
       toggleMuteSource = pactl ["set-source-mute", "@DEFAULT_SOURCE@", "toggle"]
       toggleMuteSink   = pactl ["set-sink-mute", "@DEFAULT_SINK@", "toggle"]
+      volume :: Int -> _
       volume d         = pactl ["set-sink-volume", "@DEFAULT_SINK@", printf "%+i%%" d]
-      mic    d         = pactl ["set-source-volume", "@DEFAULT_SOURCE@", printf "%+i%%" d]
+      --mic    d         = pactl ["set-source-volume", "@DEFAULT_SOURCE@", printf "%+i%%" d]
 
       backlight :: Int -> _
       backlight d = spawn "xbacklight" [if d >= 0 then "-inc" else "-dec", printf "%i" (abs d)] ? printf "Backlight %+i%%" d
@@ -350,7 +364,7 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
   group "Mouse" $ CF.modDef $ \modm -> do
     (modm,               button1) /+ cmdT @"flexible move window (discrete)" . Flex.mouseWindow Flex.discrete
     (modm .|. shiftMask, button1) /+ cmdT @"flexible resize window"          . Flex.mouseWindow Flex.resize
-    (modm,               button2) /+ cmdT @"Click on window swaps to master" . windows . (\w -> W.focusWindow w Control.Monad.>> W.swapMaster)
+    (modm,               button2) /+ cmdT @"Click on window swaps to master" . windows . (\w -> W.focusWindow w >> W.swapMaster)
     --
     -- Button assignments: 1: left, 2: middle, 3: right, 4-5: scroll, 8: previous
     --
@@ -366,7 +380,6 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     -- TODO use constructs like this instead of WindowCmd etc. sum types.
     "M-S-c"      >+ cmdT @"Kill (1 copy) window (X.A.CopyWindow)" CW.kill1
     "M-r M-S-c"  >+ cmdT @"Signal process (SIGKILL) of focused window (_NET_WM_PID)" (withFocused (signalProcessBy Posix.sigKILL))
-
     "M-$"        >+ spawn (sh "physlock -p \"${HOSTNAME} ${DISPLAY}\"") ? "Lock (physlock)"
     "M-<Esc>"    >+ MyDebug.DebugStackSet
     "M-q"        >+ myRecompileRestart False True ? "Recompile && Restart"
@@ -449,6 +462,7 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-C-y"   >+ msgT BSP.SelectNode
     "M-C-p"   >+ msgT BSP.MoveNode
     "M-C-u"   >+ msgT BSP.FocusParent
+    "M-C-r"   >+ msgT BSP.Rotate
     "M-C-="   >+ msgT BSP.Equalize
     "M-C-!"   >+ msgT BSP.Balance
     "M-C-"    >>+ directions2D >++> msgT . BSP.ExpandTowards
@@ -509,13 +523,15 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-g s"       >+ GS.goToSelected gsconfig1                          ? "Go to window (GS)"
     "M-g f"       >+ XP.windowPrompt xpConfigAuto XP.Goto XP.allWindows ? "Go to window (XP)"
 
-  where
-    (>>) = (Control.Monad.>>)
+  group "Workspace Groups" $ do
+    "M-g M-n" >+ wsPromptNew' "New Workspace group: " ?+ addWSG ? "New WSG"
+    "M-g M-g" >+ WSG.promptWSGroupView xpConfig "View WSG: " ? "View WSG (XP)"
 
+  where
     directions2D = map (:[]) "kjlh" `zip` [minBound..maxBound @Direction2D]
 
-    button8 :: Button
-    button8 = 8
+    -- button8 :: Button
+    -- button8 = 8
 
     takeScreenshot = spawn "scrot"
       [ "-u", "scrot_%Y-%d-%m_%H:%M.png"
@@ -525,8 +541,11 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
 myManageHook :: ManageHook
 myManageHook = composeOne
   [ managePads
-  , transience
+  , transience {- >>= \r -> case r of
+                           Nothing -> return r
+                           Just _ -> trace "managehook: transience" >> return r -}
   , appName   =? "term-dialog"     -?> doCenterFloat
+  -- , appName   =? "pinentry-qt"     -?> doCenterFloat
   , className =? "feh"             -?> smartPlaceHook (16,5,16,5) (0,0) <+> doFloat
   , className =? "Xmessage"        -?> doCenterFloat
   , className =? "Xmag"            -?> doSideFloat NC
@@ -534,38 +553,46 @@ myManageHook = composeOne
   , className =? "zoom" <&&> title /=? "Zoom Meeting" -?> doFloat
   , isDialog                       -?> placeHook (underMouse (0.7,0.7)) <+> doFloat
   , isFloating =? False <&&> anyWindowCurWS isFullscreen -?> doFloat
-  , definiteToMaybe $ smartPlaceHook (30,30,30,30) (0.5,0.5)
+  , isFloating =? True -?> doFloat
+  , definiteToMaybe $ do
+      minimized <- isMinimized
+      trace $ "managehook: default placement (minimized: " ++ show minimized ++ ")"
+      smartPlaceHook (30,30,30,30) (0.5,0.5)
   ] where
     definiteToMaybe = fmap Just -- inverse of X.H.ManageHelpers.maybeToDefinite
     smartPlaceHook gaps pos = placeHook (withGaps gaps (smart pos))
     anyWindowCurWS f = liftX $ or <$> (getStack >>= mapM (runQuery f) . W.integrate')
 
-myWallpaperConf :: WallpaperConf
-myWallpaperConf = def
-  { wallpaperBaseDir = "Pictures/Wallpaper"
-  , wallpapers       = WallpaperList [(ws,WallpaperDir "3840x2160") | ws <- show <$> [1..20::Int]]
-  }
+myWallpapers :: XConfig' l
+myWallpapers = applyC $ \xc -> xc
+  { logHook = logHook xc <+> setter }
+  where
+    setter = do
+      tags <- gets (map W.tag . W.workspaces . windowset)
+      wallpaperSetter (myWallpaperConf tags)
+
+    myWallpaperConf tags = def
+      { wallpaperBaseDir = "Pictures/Wallpaper"
+      , wallpapers       = WallpaperList [(ws,WallpaperDir "3840x2160") | ws <- tags]
+      }
 
 -- * Actions
 
 -- | Modified from XMonad.Main.handle
 myRestartEventHook :: Event -> X All
-myRestartEventHook e@ClientMessageEvent { ev_message_type = mt } = whenM' (fmap (mt ==) (getAtom "XMONAD_RESTART")) (myRestart Control.Monad.>> mempty)
+myRestartEventHook e@ClientMessageEvent { ev_message_type = mt } = whenM' (fmap (mt ==) (getAtom "XMONAD_RESTART")) (myRestart >> mempty)
 myRestartEventHook _                                             = mempty
 
 myRecompileRestart :: Bool -> Bool -> X ()
 myRecompileRestart rcFlag rsFlag = do
   saveWorkspaces
-  statefilename <- asks (stateFileName . directories)
   dirs <- io getDirectories
   dir <- asks (dataDir . directories)
   prog <- io System.Environment.getProgName
-  Notify.notifyLastS $ "Recompiling. State file is " ++ statefilename
+  userCode $ Notify.notifyLastS "Recompiling..."
   _p <- xfork $ whenM' (recompile dirs rcFlag) $ when' rsFlag $
     spawn $ program (dir </> prog) ["--restart"]
   return ()
-  where
-    (>>) = (Control.Monad.>>)
 
 myRestart :: X ()
 myRestart = do
@@ -573,12 +600,10 @@ myRestart = do
   prog <- io System.Environment.getProgName
   let msg = printf "Restart (%s)..." prog
   trace msg
-  Notify.notifyLastS msg
+  userCode $ Notify.notifyLastS msg
   Notify.exitHook
   MyXmobar.exitHook
   restart (dir </> prog) True
-  where
-    (>>) = (Control.Monad.>>)
 
 -- Modified to not fire on spammy property updates (e.g. status bar stuff).
 myUpdatePointer :: _ -> _ -> X ()
@@ -603,8 +628,6 @@ unFullscreen w = do
     io $ changeProperty32 dpy w a_st aTOM propModeReplace (L.delete (fromIntegral a_fs) wstate)
   broadcastMessage (FS.RemoveFullscreen w)
   sendMessage FS.FullscreenChanged
-    where
-      (>>) = (Control.Monad.>>)
 
 centerOnScreen' :: Window -> X ()
 centerOnScreen' win =
@@ -620,15 +643,44 @@ centerOnScreen' win =
 
 myShowKeys :: CF.ShowKeys
 myShowKeys ts xs = do
-  Notify.notify_ $ Notify.summary (unwords ("Keys":ts)) $ Notify.body ("<tt>" ++ unlines (showKm xs) ++ "</tt>") def
+  userCode $ Notify.notify_ $ Notify.summary (unwords ("Keys":ts)) $ Notify.body ("<tt>" ++ unlines (showKm xs) ++ "</tt>") def
   trace $ "Keys: " ++ unwords ("Keys":ts) ++ unlines (showKm xs)
-  where
-    (>>) = (Control.Monad.>>)
 
 removeNoVisibleWS :: X ()
 removeNoVisibleWS =
   curWorkspace >>= \ws ->
-    whenX (and <$> mapM (runQuery isMinimized) (W.integrate' $ W.stack ws)) DynWS.removeWorkspace
+    whenX (and <$> mapM (runQuery isMinimized) (W.integrate' $ W.stack ws)) (remove ws)
+  where
+    remove ws = do
+      DynWS.removeWorkspaceByTag (W.tag ws)
+      DO.removeName (W.tag ws)
+      saveWorkspaces
+
+swapTo :: Direction1D -> WSType -> X ()
+swapTo dir wsType = DO.swapWith dir wsType >> saveWorkspaces
+
+addWorkspace :: String -> X ()
+addWorkspace nm = DynWS.addWorkspace nm >> saveWorkspaces
+
+addWSG :: String -> X ()
+addWSG wsgId = do
+  screens <- gets (W.screens . windowset)
+  -- create workspaces
+  wss <- forM screens $ \screen -> do
+    let wsId = wsgId ++ show (toInteger (W.screen screen) + 1)
+    addWorkspace wsId
+    return (W.screen screen, wsId)
+  -- create wsg
+  WSG.addRawWSGroup wsgId wss
+  -- view it
+  WSG.viewWSGroup wsgId
+
+renameWorkspace :: String -> X ()
+renameWorkspace name = do
+  cur <- curTag
+  DO.updateName cur name
+  DynWS.renameWorkspaceByName name
+  saveWorkspaces
 
 cycleRecentHiddenWS :: [KeySym] -> KeySym -> KeySym -> X ()
 cycleRecentHiddenWS =
@@ -659,10 +711,9 @@ wsPromptNew' pstr = (>>= either Just (const Nothing)) <$> wsPromptWith xpConfig 
 wsPromptWith :: XP.XPConfig -> String -> X (Maybe (Either String WorkspaceId))
 wsPromptWith xpconfig pstr = do
   ids <- gets (map W.tag . W.workspaces . windowset)
-  wsname' <- WSNames.getWorkspaceNames'
   XP.mkXPromptWithReturn (XP.Wor pstr) xpconfig
-      (\s -> return $ filter (XP.searchPredicate xpConfig s) (mapMaybe wsname' ids))
-      (\r -> return $ maybe (Left r) Right $ wsname' r)
+      (\s -> return $ filter (XP.searchPredicate xpConfig s) ids)
+      (\r -> return $ maybe (Left r) Right (L.find (== r) ids))
 
 -- ** Spawn Prompts
 
@@ -703,6 +754,7 @@ inputPromptWithHistCompl xpc name =
 
 -- * Programs
 
+spawnDialog, spawnDialog' :: HasCmd X cmd => cmd -> X ()
 spawnDialog  = spawnTerm def{ terminalName = "term-dialog", terminalGeometry = "130x40" }
 spawnDialog' = spawnTerm def{ terminalName = "term-dialog", terminalGeometry = "130x40", terminalHold = True }
 
@@ -839,23 +891,23 @@ instance IsCmd WorkspaceCmd where
   command (WorkspaceOnScreen focus' ps@(PScreen.P s')) = PScreen.getScreen    def ps ?+ (\s -> windows (W.currentTag >>= \x -> onScreen (W.greedyView x) focus' s)) ? printf "View screen %i (%s)" s' (show focus')
   command (WorkspaceSendToScreen   ps@(PScreen.P s')) = PScreen.sendToScreen def ps ? printf "Send workspace to screen %i" s'
   command (WorkspaceViewScreen     ps@(PScreen.P s')) = PScreen.viewScreen   def ps ? printf "View screen %i"              s'
-  command (WorkspaceView    ws)  = DynWS.withNthWorkspace W.greedyView ws ? printf "View tag %i" ws
-  command (WorkspaceCopy    ws)  = DynWS.withNthWorkspace CW.copy      ws ? printf "Copy focused to tag %i" ws
-  command (WorkspaceShiftTo ws)  = DynWS.withNthWorkspace W.shift      ws ? printf "Move focused to tag %i" ws
+  command (WorkspaceView    ws)  = DO.withNthWorkspace W.greedyView ws ? printf "View tag %i" ws
+  command (WorkspaceCopy    ws)  = DO.withNthWorkspace CW.copy      ws ? printf "Copy focused to tag %i" ws
+  command (WorkspaceShiftTo ws)  = DO.withNthWorkspace W.shift      ws ? printf "Move focused to tag %i" ws
   -- TODO keys
   command WorkspaceCycleRecentHidden = cycleRecentHiddenWS [xK_Super_L, xK_Alt_L] xK_y xK_p ? "Cycle (focus) recent tags"
   -- TODO DynWS + WSNames
-  command WorkspaceAddPrompt     = wsPromptNew' "Add tag: " ?+ DynWS.addWorkspace ? "New tag (XP)"
-  command WorkspaceSetNamePrompt = wsPromptNew' "Rename tag: " ?+ (\name -> WSNames.setCurrentWorkspaceName name Control.Monad.>> saveWorkspaces) ? "Rename this tag (XP)"
+  command WorkspaceAddPrompt     = wsPromptNew' "Add tag: " ?+ addWorkspace ? "New tag (XP)"
+  command WorkspaceSetNamePrompt = wsPromptNew' "Rename tag: " ?+ renameWorkspace ? "Rename this tag (XP)"
   command WorkspaceRemoveFocused = removeNoVisibleWS ? "Remove this tag (if empty)"
-  command (WorkspaceSwapTo d _)  = WSNames.swapTo d ? printf "Shift current tag %s" (if d == Next then "forward" else "backwards")
+  command (WorkspaceSwapTo d t)  = swapTo d t >> saveWorkspaces ? printf "Shift current tag %s" (if d == Next then "forward" else "backwards")
   command (FocusScreenIn Next)   = CycleWS.nextScreen ? "Focus next screen"
   command (FocusScreenIn Prev)   = CycleWS.prevScreen ? "Focus previous screen"
 
   cmdEnum _ = [WorkspaceAddPrompt,WorkspaceCycleRecentHidden,WorkspaceRemoveFocused]
 
 instance IsCmd SetLayoutCmd where
-  command ResetLayout         = (asks (X.layoutHook . X.config) >>= setLayout) ? "Reset layout"
+  command ResetLayout         = (asks (layoutHook . config) >>= setLayout) ? "Reset layout"
   command ToggleScreenSpacing = toggleScreenSpacingEnabled                     ? "Toggle screen spacing"
   command ToggleWindowSpacing = toggleWindowSpacingEnabled                     ? "Toggle window spacing"
   command MaximizeRestore     = withFocused maximizeRestore'                   ? "Maximize / restore window"
@@ -884,8 +936,8 @@ instance IsCmd WindowCmd where
   command RotSlavesUp               = RotSlaves.rotSlavesUp                                     ? "Rotate slaves up"
   command RotAllDown                = RotSlaves.rotAllDown                                      ? "Rotate down"
   command RotAllUp                  = RotSlaves.rotAllUp                                        ? "Rotate up"
-  command (FocusSwapMaster w)       = windows (W.focusWindow w Control.Monad.>> W.swapMaster)   ? "Focus window & swap it master"
-  command ToggleFocusedWindowBorder = (withFocused toggleBorder Control.Monad.>> refresh) ? "Toggle focused window border"
+  command (FocusSwapMaster w)       = windows (W.focusWindow w >> W.swapMaster)   ? "Focus window & swap it master"
+  command ToggleFocusedWindowBorder = (withFocused toggleBorder >> refresh) ? "Toggle focused window border"
   command (MaximizeWindow w)        = XMonad.Actions.Minimize.maximizeWindow w ? "Maximize window"
   command (MinimizeWindow w)        = XMonad.Actions.Minimize.minimizeWindow w ? "Minimize window"
   command MinimizeFocused           = withFocused XMonad.Actions.Minimize.minimizeWindow ? "Minimize Focused"
@@ -899,8 +951,6 @@ docksEventHookExtra MapRequestEvent{ev_window = w} = do
       SizeHints{sh_win_gravity = wg} <- withDisplay $ \d -> io (getWMNormalHints d w)
       when (wg == Just staticGravity) $ moveWindowPerStrutPartial w
     return (All True)
-  where
-    (>>) = (Control.Monad.>>)
 docksEventHookExtra _ = return (All True)
 
 moveWindowPerStrutPartial :: Window -> X ()
@@ -921,8 +971,6 @@ moveWindowPerStrutPartial w = do
             move' rwa sr (calcStruts rwa sr (map fi sp))
       _ -> return ()
   where
-    (>>) = (Control.Monad.>>)
-    fi = fromIntegral
 
     calcStruts :: WindowAttributes -> Rectangle -> [Int32] -> [Int32]
     calcStruts rwa sr ps@(l:r:t:b:ly1:ly2:ry1:ry2:tx1:tx2:bx1:bx2:_)
@@ -944,14 +992,13 @@ moveWindowPerStrutPartial w = do
 
     move' rwa _ _ = return ()
 
+myToggleFloatAllNew :: X ()
 myToggleFloatAllNew = do
   FloatNext.toggleFloatAllNew
   next <- FloatNext.willFloatNext
   new <- FloatNext.willFloatAllNew
-  Notify.notifyLastS $ if new
+  void $ userCode $ Notify.notifyLastS $ if new
     then "Float hook: float all new windows"
     else if next
     then "Float hook: float next window"
     else "Float hook: inactive"
-  where
-    (>>) = (Control.Monad.>>)
