@@ -12,7 +12,8 @@
 {-# LANGUAGE TypeOperators             #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
--- {-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}  -- For custom EWMH event hook
+{-# OPTIONS_GHC -Wno-unused-local-binds  #-}
 
 ------------------------------------------------------------------------------
 -- |
@@ -85,6 +86,7 @@ import qualified XMonad.Hooks.ToggleHook               as ToggleHook
 import           XMonad.Hooks.UrgencyHook              (focusUrgent)
 import qualified XMonad.Hooks.UrgencyHook              as Urgency
 import           XMonad.Hooks.WallpaperSetter
+import qualified XMonad.Layout.TallMastersCombo as TMC
 import qualified XMonad.Layout.BinarySpacePartition    as BSP
 import           XMonad.Layout.BoringWindows           (boringWindows)
 import qualified XMonad.Layout.BoringWindows           as BW
@@ -104,7 +106,7 @@ import           XMonad.Layout.OneBig                  (OneBig(OneBig))
 import           XMonad.Layout.Reflect                 (REFLECTX(..), REFLECTY(..), reflectHoriz)
 import           XMonad.Layout.Spacing                 (Border(Border), spacingRaw, toggleScreenSpacingEnabled, toggleWindowSpacingEnabled)
 import           XMonad.Layout.ThreeColumns            (ThreeCol(ThreeColMid))
-import           XMonad.Layout.WindowNavigation        (Navigate(..), configurableNavigation, navigateBrightness, navigateColor)
+import qualified XMonad.Layout.WindowNavigation as WindowNavigation
 import qualified XMonad.Prompt                         as XP
 import           XMonad.Prompt.ConfirmPrompt           (confirmPrompt)
 import           XMonad.Prompt.Input                   (inputPromptWithCompl, (?+))
@@ -140,7 +142,7 @@ import           Scratchpads
 import           SpawnOnByPPID
 import           XMonad.Config.CommandsKeysF
 import qualified XMonad.Config.CommandsKeysF           as CF
-import           XMonad.Hooks.EwmhDesktopsEx           (setEWMHDesktopGeometry)
+import           XMonad.Hooks.EwmhDesktopsEx           (setEWMHDesktopGeometry, myFullscreenEventHook)
 import           XMonad.Layout.Hinted
 import           XMonad.Prompt.Environ                 (environPrompt)
 import qualified XMonad.Prompt.Qutebrowser             as XP.QB
@@ -150,7 +152,7 @@ import           XMonad.Util.Minimize
 import           XMonad.Util.NamedCommands
 import           XMonad.Util.NamedCommands.Orphans
 
-import           Data.Int                              (Int32)
+--import           Data.Int                              (Int32)
 
 -- * Main
 
@@ -165,20 +167,36 @@ myConfig =
   . restoreWorkspaces
   . urgencyHook Notify.urgencyHook
   . myWallpapers
-  . doEWMH
+  -- FS.fullscreen
+  . addFullscreenEventHook
+  . addFullscreenManageHook
   . applyC (\xc -> xc
-      { startupHook = startupHook xc
+      {  handleEventHook = handleEventHook xc <+> FS.fullscreenEventHook
+      ,  manageHook      = manageHook xc <+> FS.fullscreenManageHook
+      ,  startupHook     = startupHook xc <+> EWMH.fullscreenStartup
+      })
+  -- EWMH fullscreen
+  -- . applyC EWMH.ewmhFullscreen
+--  . applyC (\xc -> xc
+--      {  handleEventHook = handleEventHook xc <+> myFullscreenEventHook
+--      ,  startupHook = startupHook xc <+> EWMH.fullscreenStartup })
+  . applyC EWMH.ewmh
+  . applyC (\xc -> xc
+      { startupHook =
+              startupHook xc
               <+> Notify.startupHook
+              <+> setEWMHDesktopGeometry
               <+> scratchpadsStartupHook myScratchpads
       , handleEventHook =
               LayoutHints.hintsEventHook       -- Refreshes the layout whenever a window changes its hints.
               <+> minimizeEventHook    -- Handle minimize/maximize requests
               <+> removeMinimizedState
-              <+> FS.fullscreenEventHook
               <+> handleEventHook xc
-      , logHook = logHook xc <+> myUpdatePointer (0.5, 0.5) (0.4, 0.4)
+      , logHook =
+              logHook xc
+              <+> myUpdatePointer (0.5, 0.5) (0.4, 0.4)
       })
-  . applyIO' (CF.addAll myShowKeys myCmds)
+  . applyIO (CF.addAll myShowKeys myCmds)
   . statusbars
   . return $ def
   { terminal           = "my-terminal"
@@ -191,11 +209,10 @@ myConfig =
   , clientMask         = clientMask def .|. focusChangeMask -- default: structureNotifyMask .|. enterWindowMask .|. propertyChangeMask@
   , rootMask           = rootMask def .|. focusChangeMask -- default: substructureRedirectMask .|. substructureNotifyMask .|. enterWindowMask .|. leaveWindowMask .|. structureNotifyMask .|. buttonPressMask
   , handleEventHook    = myRestartEventHook <> handleEventHook def
-  , manageHook = myManageHook
-      <+> ToggleHook.toggleHook "keepfocus" (InsertPosition.insertPosition InsertPosition.Above InsertPosition.Older) -- default: Above Never
-      <+> FS.fullscreenManageHook
-      <+> SpawnOn.manageSpawn
-      <+> FloatNext.floatNextHook
+  , manageHook         = myManageHook
+                          <+> ToggleHook.toggleHook "keepfocus" (InsertPosition.insertPosition InsertPosition.Above InsertPosition.Older) -- default: Above Never
+                          <+> SpawnOn.manageSpawn
+                          <+> FloatNext.floatNextHook
   , layoutHook = myLayout
   }
     where
@@ -205,8 +222,8 @@ myConfig =
     statusbars = applyC $ \xc -> MyXmobar.myStatusBars . ManageDocks.docks $ xc
       -- { handleEventHook = docksEventHookExtra <+> handleEventHook xc }
 
-    doEWMH = applyC $ \xc -> EWMH.ewmh $ xc
-      { startupHook = setEWMHDesktopGeometry <> startupHook xc }
+    addFullscreenEventHook  = applyC $ \xc -> xc { handleEventHook = FS.fullscreenEventHook <+> handleEventHook xc }
+    addFullscreenManageHook = applyC $ \xc -> xc { manageHook      = FS.fullscreenManageHook <+> manageHook xc }
 
     debugging = applyC $ \xc -> xc
       { handleEventHook = MyDebug.debugEventHook <+> handleEventHook xc
@@ -228,14 +245,6 @@ myConfig =
         return (All True)
     removeMinimizedState _ = return (All True)
 
-type XConfig' l = IO (XConfig l) -> IO (XConfig l)
-
-applyC :: (XConfig l -> XConfig l) -> XConfig' l
-applyC f xc = xc <&> f
-
-applyIO' :: (XConfig l -> IO (XConfig l)) -> XConfig' l
-applyIO' f xc = xc >>= f
-
 -- * Persistent workspaces
 
 wsFile :: MonadIO m => m FilePath
@@ -244,7 +253,7 @@ wsFile = do
   return (dir </> "workspaces")
 
 restoreWorkspaces :: XConfig' l
-restoreWorkspaces = applyIO' $ \xc -> readState <&> maybe xc (go xc)
+restoreWorkspaces = applyIO $ \xc -> readState <&> maybe xc (go xc)
   where
     readState :: IO (Maybe [(Int, String)])
     readState = do
@@ -275,6 +284,8 @@ saveWorkspaces = do
       f x@(Right StateExtension{})        = (show (typeOf x), "n/a")
       f x@(Right (PersistentExtension a)) = (show (typeOf x), show a)
 
+-- * Scratchpads
+
 myScratchpads :: [Scratchpad]
 myScratchpads =
     exclusive
@@ -286,61 +297,72 @@ myScratchpads =
     --mhd' = doRFRR 0.2 0.1 0.7 0.7 -- TODO
     doRFRR x y w h = doRectFloat (W.RationalRect x y w h)
 
+-- * Layouts and modifiers
+
 myLayout :: _ Window
 myLayout =
-  mods $
-  -- Default Layout
-  BSP.emptyBSP
-  --  Other layouts
-  ||| basicGrid
-  ||| MRT.mouseResizableTileMirrored -- NOTE: mirror modifier fails for this because mouse. TODO: could switch MRT.isMirrored
-    { MRT.nmaster    = 2
-    , MRT.masterFrac = 50%100
-    , MRT.slaveFrac  = 50%100 }
-  ||| OneBig (2/3) (2/3)
-  ||| Tall 1 (3/100) (1/2)
-  ||| ThreeColMid 1 (1/30) (4/9)
+    minimize
+  . boringWindows
+  . reduceBorders
+  . MultiToggle.mkToggle1 NBFULL -- NOTE: This replaces the layout, including modifiers applied before it.
+  . FS.fullscreenFull -- Fullscreen _NET_WM_STATE_FULLSCREEN layout support.
+  . ManageDocks.avoidStruts -- NOTE: Apply avoidStruts late so that other modifiers aren't affected.
+  . magnify
+  . maximizeWithPadding 80
+  . mySpacing 1 2
+  . windowNavigation
+  $ toggledMods switchedLayouts
   where
-  -- NOTE: MIRROR with REFLECTX/Y is most intuitive when mirror goes first.
-    mods =
-      mySaneLayoutModifiers
-      . MultiToggle.mkToggle1 HINT
+    switchedLayouts = test1 ||| bsp ||| grid ||| threeColMid ||| oneBig ||| tall ||| mouseResizable -- ||| full
+
+    test1 = TMC.tmsCombineTwo True 2 (3/100) (2/5) (TMC.RowsOrColumns True) grid -- (TMC.RowsOrColumns False)
+
+    bsp = BSP.emptyBSP
+    --tpp = TPP.TwoPanePersistent Nothing (3/100) (1/2)
+    tall = Tall 1 (3/100) (1/2)
+    grid = reflectHoriz (Grid (16/9))
+    oneBig = OneBig (2/3) (2/3)
+    threeColMid = ThreeColMid 1 (1/30) (4/9)
+
+    --splitGrid  = SplitGrid GridV.T 1 2 (11/18) (4/3) (5/100)
+    -- testing: this full + smartBorders instead of custom predicate
+    full = Full -- NoBorders.noBorders (FS.fullscreenFull Full)
+    mouseResizable = MRT.mouseResizableTileMirrored -- NOTE TODO: mirror modifier fails for this because mouse; could tip-toe around it with MRT.isMirrored maybe
+      { MRT.nmaster    = 2
+      , MRT.masterFrac = 50%100
+      , MRT.slaveFrac  = 50%100 }
+
+    reduceBorders = NoBorders.lessBorders MyAmbiguity
+    --reduceBorders = NoBorders.smartBorders
+    --reduceBorders = NoBorders.lessBorders (NoBorders.OtherIndicated)
+
+    magnify = Magnifier.magnify 1.3 (Magnifier.NoMaster 1) False
+    -- NOTE: WindowNavigation interacts badly with some modifiers like "maximize" and "spacing", apply those after it.
+    --
+    -- NOTE: WindowNavigation spams lots of errors like this:
+    --       "xmonad: X11 error: BadValue (integer parameter out of range for operation), request code=91, error code=2"
+    -- since a recent change in xmonad core, without certain patch to xmonad-contrib (TODO: send upstream)
+    --
+    windowNavigation = WindowNavigation.configurableNavigation (WindowNavigation.navigateColor colBase00)
+
+    toggledMods =
+        MultiToggle.mkToggle1 HINT
       . MultiToggle.mkToggle1 NOBORDERS
-      . MultiToggle.mkToggle1 REFLECTX
+      . MultiToggle.mkToggle1 REFLECTX -- NOTE: MIRROR with REFLECTX/Y is most intuitive when mirror goes first.
       . MultiToggle.mkToggle1 REFLECTY
       . MultiToggle.mkToggle1 MIRROR
-
-    defaultGridRatio = 16/9
-    basicGrid  = reflectHoriz (Grid defaultGridRatio)
-    --splitGrid  = SplitGrid GridV.T 1 2 (11/18) (4/3) (5/100)
 
 
 mySpacing :: Integer -> Integer -> _
 mySpacing sd wd = spacingRaw True (f sd) True (f wd) True
   where f n = Border n n n n
 
--- Stack of common layout modifiers that are useful applied to any layout
-mySaneLayoutModifiers :: _ -> _ Window
-mySaneLayoutModifiers =
-      minimize
-    . boringWindows
-    . NoBorders.lessBorders MyAmbiguity
-    . MultiToggle.mkToggle1 NBFULL -- NOTE: This replaces the layout, including modifiers applied before it.
-    . FS.fullscreenFull -- Fullscreen _NET_WM_STATE_FULLSCREEN layout support.
-    . ManageDocks.avoidStruts -- NOTE: Apply avoidStruts late so that other modifiers aren't affected.
-    . Magnifier.magnify 1.3 (Magnifier.NoMaster 1) False
-    . maximizeWithPadding 80
-    . mySpacing 1 2
-    -- TODO: spams lots of errors:
-    --  "xmonad: X11 error: BadValue (integer parameter out of range for operation), request code=91, error code=2"
-    . configurableNavigation {-(navigateBrightness 0)-} (navigateColor colBase00) -- NOTE: WindowNavigation interacts badly with some modifiers like "maximize" and "spacing", apply those after it.
+-- * Command bindings
 
 myCmds :: (LayoutClass l Window, Read (l Window)) => CF.Cmd l ()
 myCmds = CF.hinted "Commands" $ \helpCmd -> do
 
-  let --unPScreen (PScreen.P s) = s
-      --onPScreen f g a ps = PScreen.getScreen def ps ?+ \s -> windows (g >>= \x -> onScreen (f x) a s)
-
+  let
       toggle1 a = Toggle' a
 
       skeys        = zip screenKeys [PScreen.P 0 ..]
@@ -472,8 +494,8 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-<Tab>"   >+ cyclePads
     "M-!"       >+ togglePad "tmux-0"
     "M-/"       >+ togglePad "dynamic"
-    "M-"        >>+ directions2D >++> Go
-    "M-S-"      >>+ directions2D >++> Swap
+    "M-"        >>+ directions2D >++> WindowNavigation.Go
+    "M-S-"      >>+ directions2D >++> WindowNavigation.Swap
     "M-f "      >>+ directions2D >++> flip SnapMove   Nothing
     "M-f S-"    >>+ directions2D >++> flip SnapGrow   Nothing
     "M-f C-"    >>+ directions2D >++> flip SnapShrink Nothing
@@ -538,6 +560,8 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
       , "-e", "notify-send -i \"\\$(realpath $f)\" 'New screenshot' 'Name: $f\nWxH: $wx$h\nSize: $s bytes'" -- "mv -v -n -t ~/Pictures/ -- $f"
       ] ? "Take screenshot of focused window (~/)"
 
+-- * ManageHooks
+
 myManageHook :: ManageHook
 myManageHook = composeOne
   [ managePads
@@ -551,8 +575,9 @@ myManageHook = composeOne
   , className =? "Xmag"            -?> doSideFloat NC
   , className =? "Nvidia-settings" -?> doCenterFloat
   , className =? "zoom" <&&> title /=? "Zoom Meeting" -?> doFloat
+  -- , isFullscreen -?> doFullFloat -- For EWMH fullscreen
   , isDialog                       -?> placeHook (underMouse (0.7,0.7)) <+> doFloat
-  , isFloating =? False <&&> anyWindowCurWS isFullscreen -?> doFloat
+  , isFloating =? False <&&> anyWindowCurWS (isFullscreen <&&> isFloating) -?> doFloat
   , isFloating =? True -?> doFloat
   , definiteToMaybe $ do
       minimized <- isMinimized
@@ -562,6 +587,8 @@ myManageHook = composeOne
     definiteToMaybe = fmap Just -- inverse of X.H.ManageHelpers.maybeToDefinite
     smartPlaceHook gaps pos = placeHook (withGaps gaps (smart pos))
     anyWindowCurWS f = liftX $ or <$> (getStack >>= mapM (runQuery f) . W.integrate')
+
+-- * Wallpapers
 
 myWallpapers :: XConfig' l
 myWallpapers = applyC $ \xc -> xc
@@ -589,7 +616,7 @@ myRecompileRestart rcFlag rsFlag = do
   dirs <- io getDirectories
   dir <- asks (dataDir . directories)
   prog <- io System.Environment.getProgName
-  userCode $ Notify.notifyLastS "Recompiling..."
+  void $ userCode $ Notify.notifyLastS "Recompiling..."
   _p <- xfork $ whenM' (recompile dirs rcFlag) $ when' rsFlag $
     spawn $ program (dir </> prog) ["--restart"]
   return ()
@@ -600,7 +627,7 @@ myRestart = do
   prog <- io System.Environment.getProgName
   let msg = printf "Restart (%s)..." prog
   trace msg
-  userCode $ Notify.notifyLastS msg
+  void $ userCode $ Notify.notifyLastS msg
   Notify.exitHook
   MyXmobar.exitHook
   restart (dir </> prog) True
@@ -643,7 +670,7 @@ centerOnScreen' win =
 
 myShowKeys :: CF.ShowKeys
 myShowKeys ts xs = do
-  userCode $ Notify.notify_ $ Notify.summary (unwords ("Keys":ts)) $ Notify.body ("<tt>" ++ unlines (showKm xs) ++ "</tt>") def
+  void $ userCode $ Notify.notify_ $ Notify.summary (unwords ("Keys":ts)) $ Notify.body ("<tt>" ++ unlines (showKm xs) ++ "</tt>") def
   trace $ "Keys: " ++ unwords ("Keys":ts) ++ unlines (showKm xs)
 
 removeNoVisibleWS :: X ()
@@ -785,7 +812,7 @@ instance NoBorders.SetsAmbiguous MyAmbiguity where
 
 type MiscCommand = "Misc." :??
   '[ WindowCmd
-   , Navigate
+   , WindowNavigation.Navigate
    , MyFloatCmd
    , ToggleHookCmd
    , MyDebug.DebugCmd
@@ -944,6 +971,7 @@ instance IsCmd WindowCmd where
 
 -- * Misc. hooks
 
+  {-
 -- similar to DynamicProperty.dynamicPropertyChange, but acting on MapRequestEvents
 docksEventHookExtra :: Event -> X All
 docksEventHookExtra MapRequestEvent{ev_window = w} = do
@@ -991,6 +1019,7 @@ moveWindowPerStrutPartial w = do
       when (b > 0) $ io $ moveWindow d w bx1 (fi (wa_height rwa) - b)
 
     move' rwa _ _ = return ()
+-}
 
 myToggleFloatAllNew :: X ()
 myToggleFloatAllNew = do
@@ -1002,3 +1031,13 @@ myToggleFloatAllNew = do
     else if next
     then "Float hook: float next window"
     else "Float hook: inactive"
+
+-- * Configuration helpers
+
+applyC :: (XConfig l -> XConfig l) -> XConfig' l
+applyC f xc = xc <&> f
+
+applyIO :: (XConfig l -> IO (XConfig l)) -> XConfig' l
+applyIO f xc = xc >>= f
+
+type XConfig' l = IO (XConfig l) -> IO (XConfig l)

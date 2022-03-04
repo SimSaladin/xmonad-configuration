@@ -17,10 +17,9 @@ extra-deps:
     commit: e25d090112f2a76364a10b88a729b8586c18145b
     # nix-sha256: sha256-Tcahp3yQUFCqxIgmDAPdysxjGqpuP5ph7ZysnxeRkgY=
 
-# - ./xmonad-contrib
-  - git: https://github.com/SimSaladin/xmonad-contrib.git
-    commit: d13bf41f570643fe25af92cc6cbb193acec747eb
-    # nix-sha256: sha256-RcukAos6r/EtL68+D6GVQ+GWHbj13aSAiQvzdpTywds=
+  - ./xmonad-contrib
+#  - git: https://github.com/SimSaladin/xmonad-contrib.git
+#    commit: a56dfa4dfaa7b1718337098235c6239b8a45fe12
 
   - xmobar-0.40@sha256:5d34881bc79c07734dd928651c0ff3e6d1614f18572d394e166fcf31c00560e5,13936
   - iwlib-0.1.0@sha256:226e4582d6878166a172ff98c868e25c4ed478ab28ab493498e464b1fe19d39a,921
