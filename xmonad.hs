@@ -25,25 +25,6 @@
 -- Maintainer  : Samuli Thomasson <samuli.thomasson@paivola.fi>
 -- Stability   : unstable
 -- Portability : non-portable
---
--- https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html#idm45207712345936
---
--- google-chrome-stable, chromium, etc. whatever with --app switch
---
---  file chrome-app.desktop:
---
---  [Desktop Entry]
---  Version=1.0
---  Encoding=UTF-8
---  Type=Application
---  Name=Chrome App Mode
---  Terminal=false
---  StartupWMClass=Google-chrome
---  StartupNotify=true
---  Exec=/usr/bin/google-chrome-stable --new-window --app=%u
---  Icon=google-chrome
---
---  desktop-file-install --dir=$XDG_DATA_HOME/applications chrome-app.desktop
 ------------------------------------------------------------------------------
 
 module Main (main) where
@@ -86,12 +67,12 @@ import qualified XMonad.Hooks.ToggleHook               as ToggleHook
 import           XMonad.Hooks.UrgencyHook              (focusUrgent)
 import qualified XMonad.Hooks.UrgencyHook              as Urgency
 import           XMonad.Hooks.WallpaperSetter
-import qualified XMonad.Layout.TallMastersCombo as TMC
 import qualified XMonad.Layout.BinarySpacePartition    as BSP
 import           XMonad.Layout.BoringWindows           (boringWindows)
 import qualified XMonad.Layout.BoringWindows           as BW
 import qualified XMonad.Layout.Fullscreen              as FS
 import           XMonad.Layout.GridVariants            (ChangeGridGeom(..), ChangeMasterGridGeom(..), Grid(Grid))
+import qualified XMonad.Layout.TallMastersCombo        as TMC
 --import qualified XMonad.Layout.GridVariants          as GridV (Orientation(..))
 import qualified XMonad.Layout.LayoutHints             as LayoutHints
 import qualified XMonad.Layout.Magnifier               as Magnifier
@@ -106,7 +87,7 @@ import           XMonad.Layout.OneBig                  (OneBig(OneBig))
 import           XMonad.Layout.Reflect                 (REFLECTX(..), REFLECTY(..), reflectHoriz)
 import           XMonad.Layout.Spacing                 (Border(Border), spacingRaw, toggleScreenSpacingEnabled, toggleWindowSpacingEnabled)
 import           XMonad.Layout.ThreeColumns            (ThreeCol(ThreeColMid))
-import qualified XMonad.Layout.WindowNavigation as WindowNavigation
+import qualified XMonad.Layout.WindowNavigation        as WindowNavigation
 import qualified XMonad.Prompt                         as XP
 import           XMonad.Prompt.ConfirmPrompt           (confirmPrompt)
 import           XMonad.Prompt.Input                   (inputPromptWithCompl, (?+))
@@ -142,7 +123,7 @@ import           Scratchpads
 import           SpawnOnByPPID
 import           XMonad.Config.CommandsKeysF
 import qualified XMonad.Config.CommandsKeysF           as CF
-import           XMonad.Hooks.EwmhDesktopsEx           (setEWMHDesktopGeometry, myFullscreenEventHook)
+import           XMonad.Hooks.EwmhDesktopsEx           (setEWMHDesktopGeometry)
 import           XMonad.Layout.Hinted
 import           XMonad.Prompt.Environ                 (environPrompt)
 import qualified XMonad.Prompt.Qutebrowser             as XP.QB
@@ -152,14 +133,10 @@ import           XMonad.Util.Minimize
 import           XMonad.Util.NamedCommands
 import           XMonad.Util.NamedCommands.Orphans
 
---import           Data.Int                              (Int32)
-
--- * Main
+-- * TOP
 
 main :: IO ()
 main = xmonad =<< myConfig
-
--- * Config
 
 myConfig :: IO (XConfig _)
 myConfig =
@@ -168,8 +145,6 @@ myConfig =
   . urgencyHook Notify.urgencyHook
   . myWallpapers
   -- FS.fullscreen
-  . addFullscreenEventHook
-  . addFullscreenManageHook
   . applyC (\xc -> xc
       {  handleEventHook = handleEventHook xc <+> FS.fullscreenEventHook
       ,  manageHook      = manageHook xc <+> FS.fullscreenManageHook
@@ -222,9 +197,6 @@ myConfig =
     statusbars = applyC $ \xc -> MyXmobar.myStatusBars . ManageDocks.docks $ xc
       -- { handleEventHook = docksEventHookExtra <+> handleEventHook xc }
 
-    addFullscreenEventHook  = applyC $ \xc -> xc { handleEventHook = FS.fullscreenEventHook <+> handleEventHook xc }
-    addFullscreenManageHook = applyC $ \xc -> xc { manageHook      = FS.fullscreenManageHook <+> manageHook xc }
-
     debugging = applyC $ \xc -> xc
       { handleEventHook = MyDebug.debugEventHook <+> handleEventHook xc
       , manageHook      = MyDebug.myDebugManageHook <+> XMonad.Hooks.ManageDebug.maybeManageDebug <+> manageHook xc }
@@ -245,59 +217,29 @@ myConfig =
         return (All True)
     removeMinimizedState _ = return (All True)
 
--- * Persistent workspaces
-
-wsFile :: MonadIO m => m FilePath
-wsFile = do
-  dir <- cacheDir <$> io getDirectories
-  return (dir </> "workspaces")
-
-restoreWorkspaces :: XConfig' l
-restoreWorkspaces = applyIO $ \xc -> readState <&> maybe xc (go xc)
-  where
-    readState :: IO (Maybe [(Int, String)])
-    readState = do
-      file <- wsFile
-      whenM' (doesFileExist file) $ do
-        contents <- readFile file
-        case readMaybe contents of
-          Nothing  -> trace "failed to read workspaces file" >> return Nothing
-          Just wss -> return $ Just $ zip [0..] wss
-
-    go xc wss = xc { workspaces = map snd wss }
-
-saveWorkspaces :: X ()
-saveWorkspaces = do
-  wsSort <- DO.getSortByOrder
-  tags <- gets (wsSort . W.workspaces . windowset)
-  let names = [ W.tag t | t <- tags]
-  file <- wsFile
-  io $ writeFile file (show names)
-
-  dir <- cacheDir <$> io getDirectories
-  let statefile = dir </> "extState"
-  extst <- gets (fmap f . extensibleState)
-  io $ writeFile statefile (show extst)
-    where
-      f :: Either String StateExtension -> (String, String)
-      f x@(Left s)                        = (show (typeOf x), s)
-      f x@(Right StateExtension{})        = (show (typeOf x), "n/a")
-      f x@(Right (PersistentExtension a)) = (show (typeOf x), show a)
-
--- * Scratchpads
-
-myScratchpads :: [Scratchpad]
-myScratchpads =
-    exclusive
-    [ mkPad "tmux-0"     mhd  (appName =? "tmux-0")  (tmux (Just "0"))
-    , mkPad "ncmpcpp"    mhd  (appName =? "ncmpcpp") (spawnTerm def{terminalName = "ncmpcpp"} "ncmpcpp")
-    ] ++ [mkPadDyn "dynamic" xpConfig idHook]
-  where
-    mhd  = doRFRR 0.2 0.1 0.6 0.6
-    --mhd' = doRFRR 0.2 0.1 0.7 0.7 -- TODO
-    doRFRR x y w h = doRectFloat (W.RationalRect x y w h)
-
--- * Layouts and modifiers
+myManageHook :: ManageHook
+myManageHook = composeOne
+  [ managePads
+  , transience
+  , appName   =? "term-dialog"     -?> doCenterFloat
+  -- , appName   =? "pinentry-qt"     -?> doCenterFloat
+  , className =? "feh"             -?> smartPlaceHook (16,5,16,5) (0,0) <+> doFloat
+  , className =? "Xmessage"        -?> doCenterFloat
+  , className =? "Xmag"            -?> doSideFloat NC
+  , className =? "Nvidia-settings" -?> doCenterFloat
+  , className =? "zoom" <&&> title /=? "Zoom Meeting" -?> doFloat
+  -- , isFullscreen -?> doFullFloat -- For EWMH fullscreen
+  , isDialog                       -?> placeHook (underMouse (0.7,0.7)) <+> doFloat
+  , isFloating =? False <&&> anyWindowCurWS (isFullscreen <&&> isFloating) -?> doFloat
+  , isFloating =? True -?> doFloat
+  , definiteToMaybe $ do
+      minimized <- isMinimized
+      trace $ "managehook: default placement (minimized: " ++ show minimized ++ ")"
+      smartPlaceHook (30,30,30,30) (0.5,0.5)
+  ] where
+    definiteToMaybe = fmap Just -- inverse of X.H.ManageHelpers.maybeToDefinite
+    smartPlaceHook gaps pos = placeHook (withGaps gaps (smart pos))
+    anyWindowCurWS f = liftX $ or <$> (getStack >>= mapM (runQuery f) . W.integrate')
 
 myLayout :: _ Window
 myLayout =
@@ -313,10 +255,8 @@ myLayout =
   . windowNavigation
   $ toggledMods switchedLayouts
   where
-    switchedLayouts = test1 ||| bsp ||| grid ||| threeColMid ||| oneBig ||| tall ||| mouseResizable -- ||| full
-
-    test1 = TMC.tmsCombineTwo True 2 (3/100) (2/5) (TMC.RowsOrColumns True) grid -- (TMC.RowsOrColumns False)
-
+    switchedLayouts = tmsWithGrid ||| bsp ||| grid ||| threeColMid ||| oneBig ||| tall ||| mouseResizable -- ||| full
+    tmsWithGrid = TMC.tmsCombineTwo True 1 (3/100) (2/5) (TMC.RowsOrColumns True) grid -- (TMC.RowsOrColumns False)
     bsp = BSP.emptyBSP
     --tpp = TPP.TwoPanePersistent Nothing (3/100) (1/2)
     tall = Tall 1 (3/100) (1/2)
@@ -332,9 +272,9 @@ myLayout =
       , MRT.masterFrac = 50%100
       , MRT.slaveFrac  = 50%100 }
 
-    reduceBorders = NoBorders.lessBorders MyAmbiguity
-    --reduceBorders = NoBorders.smartBorders
-    --reduceBorders = NoBorders.lessBorders (NoBorders.OtherIndicated)
+    reduceBorders = NoBorders.lessBorders NoBorders.Screen
+    -- XXX: are these equivalent?
+    --reduceBorders = NoBorders.lessBorders MyAmbiguity
 
     magnify = Magnifier.magnify 1.3 (Magnifier.NoMaster 1) False
     -- NOTE: WindowNavigation interacts badly with some modifiers like "maximize" and "spacing", apply those after it.
@@ -352,10 +292,9 @@ myLayout =
       . MultiToggle.mkToggle1 REFLECTY
       . MultiToggle.mkToggle1 MIRROR
 
-
-mySpacing :: Integer -> Integer -> _
-mySpacing sd wd = spacingRaw True (f sd) True (f wd) True
-  where f n = Border n n n n
+    mySpacing :: Integer -> Integer -> _
+    mySpacing sd wd = spacingRaw True (f sd) True (f wd) True
+      where f n = Border n n n n
 
 -- * Command bindings
 
@@ -560,33 +499,18 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
       , "-e", "notify-send -i \"\\$(realpath $f)\" 'New screenshot' 'Name: $f\nWxH: $wx$h\nSize: $s bytes'" -- "mv -v -n -t ~/Pictures/ -- $f"
       ] ? "Take screenshot of focused window (~/)"
 
--- * ManageHooks
+-- * Scratchpads
 
-myManageHook :: ManageHook
-myManageHook = composeOne
-  [ managePads
-  , transience {- >>= \r -> case r of
-                           Nothing -> return r
-                           Just _ -> trace "managehook: transience" >> return r -}
-  , appName   =? "term-dialog"     -?> doCenterFloat
-  -- , appName   =? "pinentry-qt"     -?> doCenterFloat
-  , className =? "feh"             -?> smartPlaceHook (16,5,16,5) (0,0) <+> doFloat
-  , className =? "Xmessage"        -?> doCenterFloat
-  , className =? "Xmag"            -?> doSideFloat NC
-  , className =? "Nvidia-settings" -?> doCenterFloat
-  , className =? "zoom" <&&> title /=? "Zoom Meeting" -?> doFloat
-  -- , isFullscreen -?> doFullFloat -- For EWMH fullscreen
-  , isDialog                       -?> placeHook (underMouse (0.7,0.7)) <+> doFloat
-  , isFloating =? False <&&> anyWindowCurWS (isFullscreen <&&> isFloating) -?> doFloat
-  , isFloating =? True -?> doFloat
-  , definiteToMaybe $ do
-      minimized <- isMinimized
-      trace $ "managehook: default placement (minimized: " ++ show minimized ++ ")"
-      smartPlaceHook (30,30,30,30) (0.5,0.5)
-  ] where
-    definiteToMaybe = fmap Just -- inverse of X.H.ManageHelpers.maybeToDefinite
-    smartPlaceHook gaps pos = placeHook (withGaps gaps (smart pos))
-    anyWindowCurWS f = liftX $ or <$> (getStack >>= mapM (runQuery f) . W.integrate')
+myScratchpads :: [Scratchpad]
+myScratchpads =
+    exclusive
+    [ mkPad "tmux-0"     mhd  (appName =? "tmux-0")  (tmux (Just "0"))
+    , mkPad "ncmpcpp"    mhd  (appName =? "ncmpcpp") (spawnTerm def{terminalName = "ncmpcpp"} "ncmpcpp")
+    ] ++ [mkPadDyn "dynamic" xpConfig idHook]
+  where
+    mhd  = doRFRR 0.2 0.1 0.6 0.6
+    --mhd' = doRFRR 0.2 0.1 0.7 0.7 -- TODO
+    doRFRR x y w h = doRectFloat (W.RationalRect x y w h)
 
 -- * Wallpapers
 
@@ -604,6 +528,15 @@ myWallpapers = applyC $ \xc -> xc
       }
 
 -- * Actions
+
+spawnDialog, spawnDialog' :: HasCmd X cmd => cmd -> X ()
+spawnDialog  = spawnTerm def{ terminalName = "term-dialog", terminalGeometry = "130x40" }
+spawnDialog' = spawnTerm def{ terminalName = "term-dialog", terminalGeometry = "130x40", terminalHold = True }
+
+-- | Attach tmux session (or create one) in a new terminal window.
+tmux :: Maybe String -> X ()
+tmux msession = spawnTerm def{ terminalName = maybe "" ("tmux-"++) msession, terminalSaveLines = 0 } $
+    program "tmux" $ ["new-session", "-A"] ++ maybe [] (\sname -> ["-s", sname]) msession
 
 -- | Modified from XMonad.Main.handle
 myRestartEventHook :: Event -> X All
@@ -718,6 +651,17 @@ signalProcessBy :: Posix.Signal -> Window -> X ()
 signalProcessBy s w = runQuery pid w ?+ \p ->
   confirmPrompt xpConfig (printf "kill -%i %i" (toInteger s) (toInteger p)) (io $ Posix.signalProcess s p)
 
+myToggleFloatAllNew :: X ()
+myToggleFloatAllNew = do
+  FloatNext.toggleFloatAllNew
+  next <- FloatNext.willFloatNext
+  new <- FloatNext.willFloatAllNew
+  void $ userCode $ Notify.notifyLastS $ if new
+    then "Float hook: float all new windows"
+    else if next
+    then "Float hook: float next window"
+    else "Float hook: inactive"
+
 -- * Prompts
 
 -- ** Workspace Prompts
@@ -779,34 +723,6 @@ inputPromptWithHistCompl :: XP.XPConfig -> String -> X (Maybe String)
 inputPromptWithHistCompl xpc name =
   XP.Input.inputPromptWithCompl xpc name =<< XP.historyCompletionP (== name ++ ": ")
 
--- * Programs
-
-spawnDialog, spawnDialog' :: HasCmd X cmd => cmd -> X ()
-spawnDialog  = spawnTerm def{ terminalName = "term-dialog", terminalGeometry = "130x40" }
-spawnDialog' = spawnTerm def{ terminalName = "term-dialog", terminalGeometry = "130x40", terminalHold = True }
-
--- | Attach tmux session (or create one) in a new terminal window.
-tmux :: Maybe String -> X ()
-tmux msession = spawnTerm def{ terminalName = maybe "" ("tmux-"++) msession, terminalSaveLines = 0 } $
-    program "tmux" $ ["new-session", "-A"] ++ maybe [] (\sname -> ["-s", sname]) msession
-
-
--- * MyAmbiguity LayoutMod (NoBorders.SetsAmbiguous)
-
-data MyAmbiguity = MyAmbiguity deriving (Read, Show)
-
-instance NoBorders.SetsAmbiguous MyAmbiguity where
-  hiddens MyAmbiguity{} wset lr _mst wrs = tiled wrs `L.union` floats
-    where
-      tiled [(w,_)] = [w]
-      tiled xs      = [w | (w,r) <- xs, r == lr]
-      floats =
-        [w |
-          W.Screen{workspace=wspace, screenDetail=SD sr} <- W.screens wset
-        , w  <- W.integrate' $ W.stack wspace
-        , wr <- maybeToList $ M.lookup w (W.floating wset)
-        , sr == scaleRationalRect sr wr
-        ]
 
 -- * Command Groups as Types
 
@@ -851,7 +767,7 @@ type LayoutGridCommand = "Grid" :??
    , SendMessage Resize
    ]
 
--- * Custom Command data-types
+-- * Command data-types
 
 data SetLayoutCmd = ResetLayout
                   | MaximizeRestore
@@ -907,7 +823,7 @@ data WorkspaceCmd = WorkspaceOnScreen Focus PScreen.PhysicalScreen -- greedyview
                   | WorkspaceViewScreen PScreen.PhysicalScreen
                   | FocusScreenIn Direction1D
 
--- * Instance Boilerplate
+-- * Instance Boilerplate (Cmd)
 
 instance IsCmd ToggleHookCmd where
   cmdEnum _ = [ToggleHookAllNew h | h <- ["keepfocus"]]
@@ -969,9 +885,76 @@ instance IsCmd WindowCmd where
   command (MinimizeWindow w)        = XMonad.Actions.Minimize.minimizeWindow w ? "Minimize window"
   command MinimizeFocused           = withFocused XMonad.Actions.Minimize.minimizeWindow ? "Minimize Focused"
 
--- * Misc. hooks
+-- * Persistent workspaces
 
-  {-
+wsFile :: MonadIO m => m FilePath
+wsFile = do
+  dir <- cacheDir <$> io getDirectories
+  return (dir </> "workspaces")
+
+restoreWorkspaces :: XConfig' l
+restoreWorkspaces = applyIO $ \xc -> readState <&> maybe xc (go xc)
+  where
+    readState :: IO (Maybe [(Int, String)])
+    readState = do
+      file <- wsFile
+      whenM' (doesFileExist file) $ do
+        contents <- readFile file
+        case readMaybe contents of
+          Nothing  -> trace "failed to read workspaces file" >> return Nothing
+          Just wss -> return $ Just $ zip [0..] wss
+
+    go xc wss = xc { workspaces = map snd wss }
+
+saveWorkspaces :: X ()
+saveWorkspaces = do
+  wsSort <- DO.getSortByOrder
+  tags <- gets (wsSort . W.workspaces . windowset)
+  let names = [ W.tag t | t <- tags]
+  file <- wsFile
+  io $ writeFile file (show names)
+
+  dir <- cacheDir <$> io getDirectories
+  let statefile = dir </> "extState"
+  extst <- gets (fmap f . extensibleState)
+  io $ writeFile statefile (show extst)
+    where
+      f :: Either String StateExtension -> (String, String)
+      f x@(Left s)                        = (show (typeOf x), s)
+      f x@(Right StateExtension{})        = (show (typeOf x), "n/a")
+      f x@(Right (PersistentExtension a)) = (show (typeOf x), show a)
+
+
+-- * MyAmbiguity LayoutMod (NoBorders.SetsAmbiguous)
+
+data MyAmbiguity = MyAmbiguity deriving (Read, Show)
+
+instance NoBorders.SetsAmbiguous MyAmbiguity where
+  hiddens MyAmbiguity{} wset lr _mst wrs = tiled wrs `L.union` floats
+    where
+      tiled [(w,_)] = [w]
+      tiled xs      = [w | (w,r) <- xs, r == lr]
+      floats =
+        [w |
+          W.Screen{workspace=wspace, screenDetail=SD sr} <- W.screens wset
+        , w  <- W.integrate' $ W.stack wspace
+        , wr <- maybeToList $ M.lookup w (W.floating wset)
+        , sr == scaleRationalRect sr wr
+        ]
+
+-- * Configuration helpers
+
+applyC :: (XConfig l -> XConfig l) -> XConfig' l
+applyC f xc = xc <&> f
+
+applyIO :: (XConfig l -> IO (XConfig l)) -> XConfig' l
+applyIO f xc = xc >>= f
+
+type XConfig' l = IO (XConfig l) -> IO (XConfig l)
+
+-- * Comment area
+
+{-
 -- similar to DynamicProperty.dynamicPropertyChange, but acting on MapRequestEvents
 docksEventHookExtra :: Event -> X All
 docksEventHookExtra MapRequestEvent{ev_window = w} = do
@@ -1020,24 +1003,3 @@ moveWindowPerStrutPartial w = do
 
     move' rwa _ _ = return ()
 -}
-
-myToggleFloatAllNew :: X ()
-myToggleFloatAllNew = do
-  FloatNext.toggleFloatAllNew
-  next <- FloatNext.willFloatNext
-  new <- FloatNext.willFloatAllNew
-  void $ userCode $ Notify.notifyLastS $ if new
-    then "Float hook: float all new windows"
-    else if next
-    then "Float hook: float next window"
-    else "Float hook: inactive"
-
--- * Configuration helpers
-
-applyC :: (XConfig l -> XConfig l) -> XConfig' l
-applyC f xc = xc <&> f
-
-applyIO :: (XConfig l -> IO (XConfig l)) -> XConfig' l
-applyIO f xc = xc >>= f
-
-type XConfig' l = IO (XConfig l) -> IO (XConfig l)

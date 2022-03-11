@@ -15,7 +15,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     xmonad-contrib = {
-      url = "github:SimSaladin/xmonad-contrib";
+      #url = "github:SimSaladin/xmonad-contrib";
+      url = "git+file:///home/sim/.config/xmonad/xmonad-contrib";
       inputs.flake-utils.follows = "flake-utils";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.xmonad.follows = "xmonad";

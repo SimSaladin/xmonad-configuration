@@ -55,11 +55,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1645072054,
-        "narHash": "sha256-I+HkWU1IpRb93VzjayAybj3L2CcJxNlZDhSeSpL3eSw=",
+        "lastModified": 1646414049,
+        "narHash": "sha256-sSmRFE9yVn8W2BQPkJww6tJt9wE9WY3o/mhXBXCp788=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "97777606991c3a78040c883fa97791ae77073022",
+        "rev": "e6e5c03449dcf0349a719b68e0aa6378a1c07e87",
         "type": "github"
       },
       "original": {
@@ -107,11 +107,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1639823344,
-        "narHash": "sha256-jlsQb2y6A5dB1R0wVPLOfDGM0wLyfYqEJNzMtXuzCXw=",
+        "lastModified": 1646153636,
+        "narHash": "sha256-AlWHMzK+xJ1mG267FdT8dCq/HvLCA6jwmx2ZUy5O8tY=",
         "owner": "cachix",
         "repo": "pre-commit-hooks.nix",
-        "rev": "ff9c0b459ddc4b79c06e19d44251daa8e9cd1746",
+        "rev": "b6bc0b21e1617e2b07d8205e7fae7224036dfa4b",
         "type": "github"
       },
       "original": {
@@ -167,17 +167,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1644630676,
-        "narHash": "sha256-jFak3kTtbhMb6XM4RgzM2ar1feQ0m9C9OiUfLNWFeBY=",
-        "owner": "SimSaladin",
-        "repo": "xmonad-contrib",
-        "rev": "a56dfa4dfaa7b1718337098235c6239b8a45fe12",
-        "type": "github"
+        "lastModified": 1646435686,
+        "narHash": "sha256-mzmG5rw+lZmrG0GlZ+mJahbkQgeFUrND7PyRMXoYP7M=",
+        "ref": "simsaladin/windownav-fix",
+        "rev": "98d4efb5cec38694a854f9ab6e01312ec0a65de5",
+        "revCount": 4031,
+        "type": "git",
+        "url": "file:///home/sim/.config/xmonad/xmonad-contrib"
       },
       "original": {
-        "owner": "SimSaladin",
-        "repo": "xmonad-contrib",
-        "type": "github"
+        "type": "git",
+        "url": "file:///home/sim/.config/xmonad/xmonad-contrib"
       }
     }
   },
