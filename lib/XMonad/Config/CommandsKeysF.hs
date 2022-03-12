@@ -274,3 +274,8 @@ promptCommand :: XP.XPConfig -> NamedAction
 promptCommand xpc = prompt ? "Prompt (cmd: any)" where
   prompt = do xs <- XS.gets bCommands
               mkCmdPrompt (CmdPrompt "Command" (M.elems xs)) xpc
+
+boundCommands :: X [SomeCmd]
+boundCommands = do
+  xs <- XS.gets bCommands
+  pure (M.elems xs)

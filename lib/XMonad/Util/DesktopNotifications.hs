@@ -189,6 +189,12 @@ markupToText = go where
                  '\"' -> "&quot;"
                  _    -> TL.pack [c]
 
+raw :: String -> Markup
+raw = MRaw . T.pack
+
+str :: String -> Markup
+str = MLit . T.pack
+
 bold, italic, underline, styleTT :: Markup -> Markup
 bold inner      = MTag "b"  [] (Just inner)
 italic inner    = MTag "i"  [] (Just inner)

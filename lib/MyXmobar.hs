@@ -384,7 +384,7 @@ sbarHackRef = unsafePerformIO (newIORef mempty)
 myStatusBar :: ScreenId -> IO (Maybe Handle)
 myStatusBar screen@(S sid) = do
   screenInfo <- E.bracket (openDisplay "") closeDisplay getScreenInfo
-  let r:rs = drop sid screenInfo
+  let r:rs = drop sid screenInfo -- TODO non-exhaustive pattern
       rss  = take sid screenInfo
   if any (r `containedIn`) (rs ++ rss)
      then return Nothing

@@ -108,11 +108,11 @@ xpConfig = def
   { XP.font                = show font2
   , XP.bgColor             = colBase03
   , XP.fgColor             = colBase1
-  , XP.fgHLight            = colMagenta
+  , XP.fgHLight            = colBlue
   , XP.bgHLight            = colBase02
   , XP.borderColor         = colCyan
   , XP.promptBorderWidth   = 1
-  , XP.position            = XP.CenteredAt (1%3) (1%2)
+  , XP.position            = XP.CenteredAt (5%16) (1%2)
   , XP.height              = 35 -- per row
   , XP.maxComplRows        = Just 40
   , XP.historySize         = 512
@@ -121,13 +121,15 @@ xpConfig = def
   , XP.completionKey       = (0, X.xK_Tab)
   , XP.changeModeKey       = X.xK_grave -- ` i.e. <S-#>
   , XP.showCompletionOnTab = False  -- only show list of completions when tab was pressed (False)
+  , XP.complCaseSensitivity = XP.CaseInSensitive
   , XP.searchPredicate     = fuzzyMatch
   , XP.defaultPrompter     = ("[xmonad] " ++)
   , XP.sorter              = fuzzySort
   }
 
-myPromptKeymap = XP.defaultXPKeymap <> Data.Map.fromList
-  [((X.shiftMask, X.xK_Insert), XP.pasteString)]
+myPromptKeymap = XP.emacsLikeXPKeymap <>
+  Data.Map.fromList
+  [ ((X.shiftMask, X.xK_Insert), XP.pasteString) ]
 
 xpConfigAuto, xpConfigNoHist :: XP.XPConfig
 xpConfigAuto   = xpConfig { XP.autoComplete = Just 500000 }

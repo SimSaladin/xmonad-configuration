@@ -29,6 +29,9 @@
 
 module Main (main) where
 
+import XMonad.Actions.TiledWindowDragging (dragWindow)
+import XMonad.Layout.DraggingVisualizer (draggingVisualizer)
+
 import           Prelude
 
 import           XMonad                                hiding (spawn)
@@ -101,6 +104,7 @@ import           XMonad.Util.PureX
 import qualified XMonad.Util.Rectangle                 as Rect
 import           XMonad.Util.Types                     (Direction1D(..), Direction2D(..))
 import qualified XMonad.Util.WindowProperties          as WinProp
+import           XMonad.Layout.StateFull (focusTracking)
 
 import qualified Data.List                             as L
 import qualified Data.Map                              as M
@@ -245,18 +249,19 @@ myLayout :: _ Window
 myLayout =
     minimize
   . boringWindows
+  -- . draggingVisualizer -- TODO breaks dragWindow action somehow
   . reduceBorders
   . MultiToggle.mkToggle1 NBFULL -- NOTE: This replaces the layout, including modifiers applied before it.
   . FS.fullscreenFull -- Fullscreen _NET_WM_STATE_FULLSCREEN layout support.
   . ManageDocks.avoidStruts -- NOTE: Apply avoidStruts late so that other modifiers aren't affected.
+  . maximizeWithPadding 80 -- maximize overrides magnifier
   . magnify
-  . maximizeWithPadding 80
   . mySpacing 1 2
   . windowNavigation
   $ toggledMods switchedLayouts
   where
     switchedLayouts = tmsWithGrid ||| bsp ||| grid ||| threeColMid ||| oneBig ||| tall ||| mouseResizable -- ||| full
-    tmsWithGrid = TMC.tmsCombineTwo True 1 (3/100) (2/5) (TMC.RowsOrColumns True) grid -- (TMC.RowsOrColumns False)
+    tmsWithGrid = TMC.tmsCombineTwo True 1 (3/100) (10/16) (TMC.RowsOrColumns True) grid -- (TMC.RowsOrColumns False)
     bsp = BSP.emptyBSP
     --tpp = TPP.TwoPanePersistent Nothing (3/100) (1/2)
     tall = Tall 1 (3/100) (1/2)
@@ -276,7 +281,8 @@ myLayout =
     -- XXX: are these equivalent?
     --reduceBorders = NoBorders.lessBorders MyAmbiguity
 
-    magnify = Magnifier.magnify 1.3 (Magnifier.NoMaster 1) False
+    magnify = Magnifier.magnifyTop 1.3 (Magnifier.NoMaster 4) True -- False
+
     -- NOTE: WindowNavigation interacts badly with some modifiers like "maximize" and "spacing", apply those after it.
     --
     -- NOTE: WindowNavigation spams lots of errors like this:
@@ -323,15 +329,16 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
       backlight d = spawn "xbacklight" [if d >= 0 then "-inc" else "-dec", printf "%i" (abs d)] ? printf "Backlight %+i%%" d
 
   group "Mouse" $ CF.modDef $ \modm -> do
-    (modm,               button1) /+ cmdT @"flexible move window (discrete)" . Flex.mouseWindow Flex.discrete
-    (modm .|. shiftMask, button1) /+ cmdT @"flexible resize window"          . Flex.mouseWindow Flex.resize
-    (modm,               button2) /+ cmdT @"Click on window swaps to master" . windows . (\w -> W.focusWindow w >> W.swapMaster)
-    --
+    -- Kensington expert mouse button positions:
+    --   2(TL) 8(TR)
+    --     4(SCRU)
+    --     5(SCRD)
+    --   1(BL) 3(TR)
     -- Button assignments: 1: left, 2: middle, 3: right, 4-5: scroll, 8: previous
-    --
-    -- Kensington mouse button order: 1: bottom left, 2: top left, 3: bottom right, 8: top right
-    --
-    -- TODO use stuff from AfterDrag.
+    (modm,               button1) /+ cmdT @"Drag tiled window"               . dragWindow
+    (modm,               button2) /+ cmdT @"Click on window swaps to master" . windows . (\w -> W.focusWindow w >> W.swapMaster)
+    (modm,               button3) /+ cmdT @"flexible move window (discrete)" . Flex.mouseWindow Flex.discrete
+    (modm .|. shiftMask, button3) /+ cmdT @"flexible resize window"          . Flex.mouseWindow Flex.resize
 
   group "XMonad & X11" $ do
     "M-<F1>" `CF.key'` helpCmd
@@ -349,7 +356,15 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-<Print>"  >+ takeScreenshot
 
   group "Prompts (XMonad)" $ do
-    "M-r M-c" >+ promptCommand xpConfig
+    let allCommands =
+          [ enumCommands (Proxy :: Proxy MiscCommand)
+          , enumCommands (Proxy :: Proxy LayoutCommand)
+          , enumCommands (Proxy :: Proxy LayoutGridCommand)
+          ]
+        cmdPromptAll = do
+          bound <- boundCommands
+          mkCmdPrompt (CmdPrompt "Cmd (ALL)" (nubBy ((==) `on` describe) $ concat allCommands ++ bound)) xpConfig
+    "M-r M-c" >+ cmdPromptAll ? "Prompt: Cmd (ALL)"
     "M-r M-w" >+ cmdPrompt xpConfig (Proxy :: Proxy MiscCommand)
     "M-r M-l" >+ cmdPrompt xpConfig (Proxy :: Proxy LayoutCommand)
     "M-r M-g" >+ cmdPrompt xpConfig (Proxy :: Proxy LayoutGridCommand)
@@ -603,8 +618,14 @@ centerOnScreen' win =
 
 myShowKeys :: CF.ShowKeys
 myShowKeys ts xs = do
-  void $ userCode $ Notify.notify_ $ Notify.summary (unwords ("Keys":ts)) $ Notify.body ("<tt>" ++ unlines (showKm xs) ++ "</tt>") def
+  void $ userCode $
+    Notify.notify_
+    $ Notify.summary (Notify.raw $ rsummary ts)
+    $ Notify.body (Notify.styleTT $ Notify.str $ unlines (showKm xs)) def
   trace $ "Keys: " ++ unwords ("Keys":ts) ++ unlines (showKm xs)
+  where
+    rsummary []       = "Bindings (TOP)"
+    rsummary (k:xs)   = "[ " ++ k ++ " + _ ] " ++ intercalate ", " xs
 
 removeNoVisibleWS :: X ()
 removeNoVisibleWS =
@@ -923,7 +944,6 @@ saveWorkspaces = do
       f x@(Left s)                        = (show (typeOf x), s)
       f x@(Right StateExtension{})        = (show (typeOf x), "n/a")
       f x@(Right (PersistentExtension a)) = (show (typeOf x), show a)
-
 
 -- * MyAmbiguity LayoutMod (NoBorders.SetsAmbiguous)
 

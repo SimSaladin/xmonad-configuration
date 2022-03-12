@@ -41,7 +41,7 @@ module XMonad.Util.NamedCommands (
   -- * Generics
   enumConstrs,
   -- * Prompt Utilities
-  CmdPrompt(..), cmdPrompt, mkCmdPrompt,
+  CmdPrompt(..), cmdPrompt, mkCmdPrompt, enumCommands,
   -- re-exports
   Data, typeOf
   ) where
@@ -217,6 +217,12 @@ instance XP.XPrompt CmdPrompt where
   showXPrompt (CmdPrompt s _) = printf "%s: " s
   nextCompletion     _ = XP.getNextCompletion
   commandToComplete  _ = id
+
+enumCommands :: forall a. (IsCmd a) => Proxy a -> [SomeCmd]
+enumCommands p = SomeCmd <$> cmdEnum cmd
+  where
+    cmd = undefined `asProxyTypeOf` p
+    -- nm = printf "CMD (%s)" (describeType cmd)
 
 -- | @ cmdPrompt xpconfig (Proxy @MagnifyMsg) @
 cmdPrompt :: forall a. (IsCmd a) => XP.XPConfig -> Proxy a -> NamedAction
