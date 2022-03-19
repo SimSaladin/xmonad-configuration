@@ -3,3 +3,4 @@ xmonad-x86_64-linux
 /xmonad/
 .pre-commit-config.yaml
 /X11/
+dist-newstyle/

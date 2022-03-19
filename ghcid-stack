@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+STACK="stack"
+#STACK+=" --silent"
+
+target='xmonad-configuration:lib'
+ghcOpts=''
+ghciFlags='-fno-code -ferror-spans -fdiagnostics-color=always -Wno-prepositive-qualified-module'
+stackGhciArgs="--ghci-options='$ghciFlags' --ghc-options='$ghcOpts' --no-load"
+
+ghcid --command="$STACK ghci $target $stackGhciArgs" \
+	--restart=./package.yaml --restart=./stack.yaml --restart="$0" \
+	--clear --no-height-limit --reverse-errors "$@"

@@ -27,6 +27,7 @@
 -- Portability : non-portable
 ------------------------------------------------------------------------------
 
+
 module Main (main) where
 
 import XMonad.Actions.TiledWindowDragging (dragWindow)
@@ -57,6 +58,7 @@ import qualified XMonad.Actions.PhysicalScreens        as PScreen
 import qualified XMonad.Actions.RotSlaves              as RotSlaves
 import qualified XMonad.Actions.SpawnOn                as SpawnOn
 import qualified XMonad.Actions.UpdatePointer          as A (updatePointer)
+import XMonad.Actions.AfterDrag (ifClick)
 import qualified XMonad.Hooks.EwmhDesktops             as EWMH
 import           XMonad.Hooks.FadeWindows              (isFloating)
 import qualified XMonad.Hooks.FloatNext                as FloatNext
@@ -117,6 +119,7 @@ import           System.FilePath                       ((</>))
 import qualified System.Posix                          as Posix
 import           Text.Printf                           (printf)
 import           Text.Read                             (readMaybe)
+
 
 import           DesktopEntries
 import qualified MyDebug
@@ -260,7 +263,7 @@ myLayout =
   . windowNavigation
   $ toggledMods switchedLayouts
   where
-    switchedLayouts = tmsWithGrid ||| bsp ||| grid ||| threeColMid ||| oneBig ||| tall ||| mouseResizable -- ||| full
+    switchedLayouts = bsp ||| tmsWithGrid ||| grid ||| threeColMid ||| oneBig ||| tall ||| mouseResizable -- ||| full
     tmsWithGrid = TMC.tmsCombineTwo True 1 (3/100) (10/16) (TMC.RowsOrColumns True) grid -- (TMC.RowsOrColumns False)
     bsp = BSP.emptyBSP
     --tpp = TPP.TwoPanePersistent Nothing (3/100) (1/2)
@@ -281,7 +284,7 @@ myLayout =
     -- XXX: are these equivalent?
     --reduceBorders = NoBorders.lessBorders MyAmbiguity
 
-    magnify = Magnifier.magnifyTop 1.3 (Magnifier.NoMaster 4) True -- False
+    magnify = Magnifier.magnifyTop 1.3 (Magnifier.NoMaster 4) False
 
     -- NOTE: WindowNavigation interacts badly with some modifiers like "maximize" and "spacing", apply those after it.
     --
@@ -334,8 +337,22 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     --     4(SCRU)
     --     5(SCRD)
     --   1(BL) 3(TR)
+    --
     -- Button assignments: 1: left, 2: middle, 3: right, 4-5: scroll, 8: previous
-    (modm,               button1) /+ cmdT @"Drag tiled window"               . dragWindow
+    --
+    let
+      -- tiled:
+      --   click: focus & move to master position
+      --   drag:  swap with other tiled windows
+      -- floating:
+      --   click: sink window
+      --   drag: change location of floating window
+      action1 w = do
+        isF <- runQuery isFloating w
+        if isF then Flex.mouseWindow Flex.discrete w >> ifClick (windows $ W.sink w)
+               else dragWindow w >> ifClick (windows $ W.focusWindow w >> W.swapMaster)
+
+    (modm,               button1) /+ cmdT @"Drag tiled window"               . action1
     (modm,               button2) /+ cmdT @"Click on window swaps to master" . windows . (\w -> W.focusWindow w >> W.swapMaster)
     (modm,               button3) /+ cmdT @"flexible move window (discrete)" . Flex.mouseWindow Flex.discrete
     (modm .|. shiftMask, button3) /+ cmdT @"flexible resize window"          . Flex.mouseWindow Flex.resize
@@ -506,8 +523,8 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
   where
     directions2D = map (:[]) "kjlh" `zip` [minBound..maxBound @Direction2D]
 
-    -- button8 :: Button
-    -- button8 = 8
+    button8 :: Button
+    button8 = 8
 
     takeScreenshot = spawn "scrot"
       [ "-u", "scrot_%Y-%d-%m_%H:%M.png"
@@ -617,15 +634,16 @@ centerOnScreen' win =
            else FloatKeys.keysMoveWindowTo (x+round (w%2), y+round (h%2)) (0.5,0.5) win
 
 myShowKeys :: CF.ShowKeys
-myShowKeys ts xs = do
+myShowKeys ts km = do
   void $ userCode $
     Notify.notify_
     $ Notify.summary (Notify.raw $ rsummary ts)
-    $ Notify.body (Notify.styleTT $ Notify.str $ unlines (showKm xs)) def
-  trace $ "Keys: " ++ unwords ("Keys":ts) ++ unlines (showKm xs)
+    $ Notify.body (Notify.styleTT $ Notify.str textKm) def
+  trace $ "Keys: " ++ rsummary ts ++ "\n" ++ textKm
   where
-    rsummary []       = "Bindings (TOP)"
-    rsummary (k:xs)   = "[ " ++ k ++ " + _ ] " ++ intercalate ", " xs
+    rsummary []       = "<TOP>"
+    rsummary (k:xs)   = "<" ++ k ++ "> " ++ intercalate ", " xs
+    textKm = unlines (showKm km)
 
 removeNoVisibleWS :: X ()
 removeNoVisibleWS =
@@ -972,54 +990,4 @@ applyIO f xc = xc >>= f
 
 type XConfig' l = IO (XConfig l) -> IO (XConfig l)
 
--- * Comment area
-
-{-
--- similar to DynamicProperty.dynamicPropertyChange, but acting on MapRequestEvents
-docksEventHookExtra :: Event -> X All
-docksEventHookExtra MapRequestEvent{ev_window = w} = do
-    whenX (runQuery ManageDocks.checkDock w) $ do
-      SizeHints{sh_win_gravity = wg} <- withDisplay $ \d -> io (getWMNormalHints d w)
-      when (wg == Just staticGravity) $ moveWindowPerStrutPartial w
-    return (All True)
-docksEventHookExtra _ = return (All True)
-
-moveWindowPerStrutPartial :: Window -> X ()
-moveWindowPerStrutPartial w = do
-    wda  <- getAtom "_NET_WM_DESKTOP"
-    wsa  <- getAtom "_NET_WM_STRUT"
-    wspa <- getAtom "_NET_WM_STRUT_PARTIAL"
-    msp <- WinProp.getProp32 wspa w
-    case msp of
-      Just sp@[l, r, t, b, ly1, ly2, ry1, ry2, tx1, tx2, bx1, bx2] -> do
-        rootw <- asks theRoot
-        rwa <- withDisplay $ \d -> io (getWindowAttributes d rootw)
-        mda <- WinProp.getProp32 wda w
-        case mda of
-          Just _ -> return ()
-          Nothing -> do
-            sr <- withWindowSet $ return . screenRect . W.screenDetail . W.current
-            move' rwa sr (calcStruts rwa sr (map fi sp))
-      _ -> return ()
-  where
-
-    calcStruts :: WindowAttributes -> Rectangle -> [Int32] -> [Int32]
-    calcStruts rwa sr ps@(l:r:t:b:ly1:ly2:ry1:ry2:tx1:tx2:bx1:bx2:_)
-      | l > 0 = [l + fi (rect_x sr),0,0,0, rect_y sr + ly1,rect_y sr + ly2, 0,0, 0,0, 0,0]
-      | r > 0 = [0,fi (wa_width rwa) - rect_x sr - fi (rect_width sr) + r,0,0, 0,0, rect_y sr + ry1,rect_y sr + ry2, 0,0, 0,0]
-      | t > 0 = [0,0,fi (rect_y sr) + t,0, 0,0, 0,0, rect_x sr + tx1,rect_x sr + max 0 (tx2 - 1), 0,0]
-      | b > 0 = [0,0,0,b, 0,0, 0,0, 0,0, rect_x sr + bx1,rect_x sr + max 0 (bx2 - 1)]
-      | otherwise = ps
-    calcStruts rwa sr ps = ps
-
-    move' :: WindowAttributes -> Rectangle -> [Int32] -> X ()
-    move' rwa Rectangle{rect_x = sx, rect_y = sy, rect_width = sw} sp@[l, r, t, b, ly1, ly2, ry1, ry2, tx1, tx2, bx1, bx2] = withDisplay $ \d -> do
-      wspa <- getAtom "_NET_WM_STRUT_PARTIAL"
-      io (changeProperty32 d w wspa cARDINAL propModeReplace (map fi sp))
-      when (l > 0) $ io $ moveWindow d w sx ly1
-      when (r > 0) $ io $ moveWindow d w (fi (wa_width rwa) - r) ry1
-      when (t > 0) $ io $ moveWindow d w tx1 sy
-      when (b > 0) $ io $ moveWindow d w bx1 (fi (wa_height rwa) - b)
-
-    move' rwa _ _ = return ()
--}
+foo = "bar"

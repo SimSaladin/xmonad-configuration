@@ -43,6 +43,7 @@ flag via-llvm
 library
   exposed-modules:
       DesktopEntries
+      Hacks
       MyDebug
       MyRun
       MyTheme
