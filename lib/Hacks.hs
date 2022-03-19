@@ -17,6 +17,9 @@ module Hacks (
   module Hacks
   ) where
 
+
+test_TESTESTEST = 5
+
 -- * Comment area
 
 {-

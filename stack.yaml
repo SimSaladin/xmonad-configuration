@@ -1,21 +1,18 @@
 ---
-resolver: lts-18.20
-compiler: ghc-8.10.7
+resolver: lts-19.0
+#compiler: ghc-9.0.2
+packages:
+  - .
 flags:
   xmobar:
     all_extensions: true
-packages:
-  - ./.
 extra-deps:
 # - ./xmonad
   - git: https://github.com/xmonad/xmonad.git
     commit: e25d090112f2a76364a10b88a729b8586c18145b
-    # nix-sha256: sha256-Tcahp3yQUFCqxIgmDAPdysxjGqpuP5ph7ZysnxeRkgY=
-
-  - ./xmonad-contrib
-#  - git: https://github.com/SimSaladin/xmonad-contrib.git
-#    commit: a56dfa4dfaa7b1718337098235c6239b8a45fe12
-
+# - ./xmonad-contrib
+  - git: https://github.com/SimSaladin/xmonad-contrib.git
+    commit: f1fa51049cce6e01ac8a03095ad57bd52972da7e
   - xmobar-0.40@sha256:5d34881bc79c07734dd928651c0ff3e6d1614f18572d394e166fcf31c00560e5,13936
   - iwlib-0.1.0@sha256:226e4582d6878166a172ff98c868e25c4ed478ab28ab493498e464b1fe19d39a,921
   - netlink-1.1.1.0@sha256:d83424b5ba9921191449e4b1f53c7cba7f4375f2c55a9b737c77e982e1f40d00,3689
@@ -23,8 +20,4 @@ extra-deps:
   - ConfigFile-1.1.4@sha256:ca56261e1deae6ef958a337b03812987bfd94ab37b047e27f262bc3137813165,2056
   - MissingH-1.4.3.0@sha256:32f9892ec98cd21df4f4d3ed8d95a3831ae74287ea0641d6f09b2dc6ef061d39,4859
 allow-newer: true
-
-hide-source-paths: false
-
-
-#ghc-options:
+#hide-source-paths: false
