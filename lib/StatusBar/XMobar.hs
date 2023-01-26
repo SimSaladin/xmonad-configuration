@@ -95,8 +95,8 @@ modifyConfigB = SetConfigB
 setFontsB :: [MyTheme.Font] -> ConfigB
 setFontsB []           = mempty
 setFontsB (main:extra) = modifyConfigB $ \cfg -> cfg
-  { XB.font            = show main
-  , XB.additionalFonts = show <$> extra
+  { XB.font            = showPangoFont main
+  , XB.additionalFonts = showPangoFont <$> extra
   , XB.textOffset      = offset main
   , XB.textOffsets     = offset <$> extra
   }

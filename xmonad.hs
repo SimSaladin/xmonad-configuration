@@ -257,7 +257,7 @@ myLayout =
   . MultiToggle.mkToggle1 NBFULL -- NOTE: This replaces the layout, including modifiers applied before it.
   . FS.fullscreenFull -- Fullscreen _NET_WM_STATE_FULLSCREEN layout support.
   . ManageDocks.avoidStruts -- NOTE: Apply avoidStruts late so that other modifiers aren't affected.
-  . maximizeWithPadding 80 -- maximize overrides magnifier
+  . maximizeWithPadding 90 -- maximize overrides magnifier
   . magnify
   . mySpacing 1 2
   . windowNavigation

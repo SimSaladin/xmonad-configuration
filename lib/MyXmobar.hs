@@ -109,7 +109,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       ]
     )
     (setFontsB
-      [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 6) } -- default 0
+      [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- default 0
       , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 6), fontOffset = Just 13 } -- CJK 1
       , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8), fontOffset = Just 16 } -- symbols 2
       , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7), fontOffset = Just 18 } -- symbols 3

@@ -20,6 +20,7 @@ module MyTheme
   ( sepByConcat
   , Font(..)
   , FontSize(..)
+  , showPangoFont
   , font
   , font2
   , wqyMicroHei
@@ -92,6 +93,11 @@ data FontSize  = PixelSize Int | PointSize Double
 
 data FontStyle = Thin | Medium | Regular | Bold | BoldItalic | Light | LightItalic | Semibold | Italic
   deriving (Eq, Show)
+
+showPangoFont :: Font -> String
+showPangoFont Font{..} = printf "%s %.2f" fontFamily (dSize fontSize) where
+  dSize (Just (PointSize s)) = s
+  dSize _ = 8
 
 gsconfig1 :: GS.HasColorizer a => GS.GSConfig a
 gsconfig1 = def
