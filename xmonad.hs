@@ -106,7 +106,7 @@ import           XMonad.Util.PureX
 import qualified XMonad.Util.Rectangle                 as Rect
 import           XMonad.Util.Types                     (Direction1D(..), Direction2D(..))
 import qualified XMonad.Util.WindowProperties          as WinProp
-import qualified XMonad.Util.WindowState               as WS
+import           XMonad.Config.Gnome (gnomeRegister)
 
 import qualified Data.List                             as L
 import qualified Data.Map                              as M
@@ -139,6 +139,12 @@ import           XMonad.Util.Minimize
 import           XMonad.Util.NamedCommands
 import           XMonad.Util.NamedCommands.Orphans
 
+-- * Feature flags
+
+-- For GNOME desktops (cyan thinkpad). Set to False on other systems.
+enableGNOME :: Bool
+enableGNOME = True
+
 -- * TOP
 
 main :: IO ()
@@ -151,7 +157,11 @@ myConfig =
   . restoreWorkspaces
   . applyC urgencyHook
   -- . myWallpapers
-  . applyC myFullscreen
+
+  . (if enableGNOME
+       then applyC (\xc -> xc { startupHook = gnomeRegister <+> startupHook xc })
+       else id)
+
   . applyC EWMH.ewmh
   . applyC (\xc -> xc
       { startupHook =
@@ -282,7 +292,7 @@ myLayout =
   . ManageDocks.avoidStruts -- NOTE: Apply avoidStruts late so that other modifiers aren't affected.
   . maximizeWithPadding 90 -- maximize overrides magnifier
   . magnify
-  . mySpacing 1 2
+  . (if enableGNOME then id else mySpacing 1 2)
   . windowNavigation -- apply on top of any modifiers that might modify placement of tiled windows
   . mkToggle1 (HINTSPLACEMENT (0.5, 0.5))
   . mkToggle1 REFLECTX -- NOTE: MIRROR with REFLECTX/Y is most intuitive when mirror goes first.
@@ -384,7 +394,8 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     -- TODO use constructs like this instead of WindowCmd etc. sum types.
     "M-S-c"      >+ cmdT @"Kill (1 copy) window (X.A.CopyWindow)" CW.kill1
     "M-r M-S-c"  >+ cmdT @"Signal process (SIGKILL) of focused window (_NET_WM_PID)" (withFocused (signalProcessBy Posix.sigKILL))
-    "M-$"        >+ spawn (sh "physlock -p \"${HOSTNAME} ${DISPLAY}\"") ? "Lock (physlock)"
+    "M-$"        >+ -- spawn (sh "physlock -p \"${HOSTNAME} ${DISPLAY}\"") ? "Lock (physlock)"
+     spawn (sh "dbus-send --type=method_call --dest=org.gnome.ScreenSaver /org/gnome/ScreenSaver org.gnome.ScreenSaver.Lock") ? "Lock the screen"
     "M-<Esc>"    >+ MyDebug.DebugStackSet
     "M-q"        >+ myRecompileRestart False True ? "Recompile && Restart"
     "M-S-q"      >+ myRestart ? "Restart"
