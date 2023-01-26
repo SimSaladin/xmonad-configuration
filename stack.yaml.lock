@@ -5,61 +5,51 @@
 
 packages:
 - completed:
+    commit: cf4d6f31b1751318309ddcc1c5fd8aa71a6a453a
+    git: https://github.com/xmonad/xmonad.git
     name: xmonad
-    version: 0.17.1.9
-    git: https://github.com/xmonad/xmonad.git
     pantry-tree:
-      size: 3770
       sha256: 0f141667bd9e0312278b3cf6567c9de1dc1be3a9cd95bc1183617694ee7f0e68
-    commit: cf4d6f31b1751318309ddcc1c5fd8aa71a6a453a
+      size: 3770
+    version: 0.17.1.9
   original:
+    commit: cf4d6f31b1751318309ddcc1c5fd8aa71a6a453a
     git: https://github.com/xmonad/xmonad.git
-    commit: cf4d6f31b1751318309ddcc1c5fd8aa71a6a453a
 - completed:
-    hackage: xmobar-0.45@sha256:8845b68837ef59323deacda8a27a363e17e99c42019b348eeff94a4f2d9a909d,14911
+    commit: 8a33c4ebe7d0a1be96073d8c019f1f3901bbf344
+    git: https://github.com/xmonad/X11
+    name: X11
     pantry-tree:
+      sha256: 3ad2be290f2328541a46748dd3332aec04d9b5d089ac13d7eed9cb6e514d013d
+      size: 3651
+    version: 1.10.3.9
+  original:
+    commit: 8a33c4ebe7d0a1be96073d8c019f1f3901bbf344
+    git: https://github.com/xmonad/X11
+- completed:
+    hackage: xmobar-0.46@sha256:65e8683aec86e5dc23041959dc2b0803f1be4a3cacab1ed29159c0732212c273,14911
+    pantry-tree:
+      sha256: 0c97230f9b521b2af6237214a4ca14536a5df936835153b9768d7108ba5eb368
       size: 9769
-      sha256: bcc0846ac538ffb307d766059388573dbfbf4359322cad3cef7bddad67fcfb48
   original:
-    hackage: xmobar-0.45
-- completed:
-    hackage: cairo-0.13.8.2@sha256:ef1709c3c4d2c6d68a9a51d9f220dccc0745f6468d2d0868c15a7ecdf8f325a1,4078
-    pantry-tree:
-      size: 2830
-      sha256: d6a9b3a15bc2e7b53fda331279cfdbc299fbf0c4be2ee8c1b6b79b924b6fdeb4
-  original:
-    hackage: cairo-0.13.8.2@sha256:ef1709c3c4d2c6d68a9a51d9f220dccc0745f6468d2d0868c15a7ecdf8f325a1,4078
-- completed:
-    hackage: pango-0.13.8.2@sha256:d4057ebddade4cde3e25d7755b5e030e7a7e56fe7365afd37916a7bba46d3fd9,3917
-    pantry-tree:
-      size: 1506
-      sha256: 10c335853e1d43e0b7426b33e8ddbdb90b3e318ebec4d58f0726a2f4cfb2e1c9
-  original:
-    hackage: pango-0.13.8.2@sha256:d4057ebddade4cde3e25d7755b5e030e7a7e56fe7365afd37916a7bba46d3fd9,3917
+    hackage: xmobar-0.46
 - completed:
     hackage: iwlib-0.1.0@sha256:226e4582d6878166a172ff98c868e25c4ed478ab28ab493498e464b1fe19d39a,921
     pantry-tree:
-      size: 259
       sha256: f867a93991b791adf4c65bb91f385effee7e18bd78d8e0a61fd03f42f6073705
+      size: 259
   original:
-    hackage: iwlib-0.1.0@sha256:226e4582d6878166a172ff98c868e25c4ed478ab28ab493498e464b1fe19d39a,921
+    hackage: iwlib-0.1.0
 - completed:
     hackage: netlink-1.1.1.0@sha256:d83424b5ba9921191449e4b1f53c7cba7f4375f2c55a9b737c77e982e1f40d00,3689
     pantry-tree:
-      size: 1598
       sha256: 42a57a2db0d8b44e04a04905ed56994b7293d2f244595bf3e65480c36d114ac3
+      size: 1598
   original:
-    hackage: netlink-1.1.1.0@sha256:d83424b5ba9921191449e4b1f53c7cba7f4375f2c55a9b737c77e982e1f40d00,3689
-- completed:
-    hackage: glib-0.13.8.2@sha256:f44b829e741b3c3244d523f60b058701dfc067ff64c2ba61d43be4cccfc2663d,3156
-    pantry-tree:
-      size: 1625
-      sha256: 2442a22152231a94e2f1ecfe7ddc0f4e5fb2d5ae116b371508a448bd3312ef06
-  original:
-    hackage: glib-0.13.8.2@sha256:f44b829e741b3c3244d523f60b058701dfc067ff64c2ba61d43be4cccfc2663d,3156
+    hackage: netlink-1.1.1.0
 snapshots:
 - completed:
-    size: 619205
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/19/31.yaml
-    sha256: e5f56f619132209b826084cacd6374d7f0344cc88a9d1d305878190e4204ae1f
-  original: lts-19.31
+    sha256: bfafe5735ccb74527d754b1f9999ded72d7c3a6c3a88529449661431ccfbd6cc
+    size: 649327
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/8.yaml
+  original: lts-20.8

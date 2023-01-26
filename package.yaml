@@ -42,10 +42,17 @@ executables:
       ghc-options: -fllvm
     - condition: false
       other-modules: Paths_xmonad_configuration
+  xmobar-run:
+    main: xmobar-run.hs
+    dependencies: xmonad-configuration
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - '"-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"'
 dependencies:
 - base
 - containers
-- dbus
+- dbus >= 1.2.24
 - directory
 - free
 - process
@@ -60,6 +67,7 @@ dependencies:
 - xmonad-contrib >= 0.17
 - xdg-desktop-entry
 - random
+- rawfilepath
 ghc-options:
 - -dynamic
 - -pie
@@ -69,9 +77,6 @@ when:
   then:
     ghc-options:
       - -O2
-      - -fexpose-all-unfoldings
-      - -fspecialise-aggressively
-      - -fstatic-argument-transformation
       - -funbox-strict-fields
   else:
     ghc-options: -O0

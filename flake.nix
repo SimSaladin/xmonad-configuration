@@ -27,28 +27,30 @@
     flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         overlay = import nix/overlay.nix { inherit xmonad xmonad-contrib; };
-        overlays = [ overlay xmonad.overlay xmonad-contrib.overlay ];
+        overlays = [
+          xmonad.overlay
+          xmonad-contrib.overlay
+          overlay
+        ];
         pkgs = import nixpkgs { inherit system overlays; };
         pname = "xmonad-configuration";
+        hslib = pkgs.haskell.lib;
       in
       {
         packages = {
-          "${pname}" = pkgs.haskellPackages.${pname};
+          "${pname}-ghc922" = pkgs.haskell.packages."ghc922".${pname};
+          "${pname}-ghc902" = pkgs.haskell.packages."ghc902".${pname};
+          # default
+          "${pname}" = hslib.compose.linkWithGold ( self.packages.${system}."${pname}-ghc922" );
           "${pname}-fast" =
-            pkgs.haskell.lib.compose.linkWithGold (
-              pkgs.haskell.lib.compose.dontHaddock (
-                pkgs.haskellPackages.${pname}.overrideAttrs (_: { configureFlags = [ ]; })
+            hslib.compose.linkWithGold (
+              hslib.compose.dontHaddock (
+                self.packages.${system}.${pname}.overrideAttrs (_: { configureFlags = [ ]; })
               ));
-
-          # TODO
-          "${pname}-ghc921" =
-            let
-              hp = pkgs.haskell.packages."ghc921";
-            in
-            hp.${pname};
         };
 
         defaultPackage = self.packages.${system}.${pname};
+
         checks = {
           pre-commit-check = pre-commit-hooks.lib.${system}.run {
             src = ./.;
@@ -63,9 +65,11 @@
         };
 
         devShells = {
-          dev = pkgs.haskellPackages.shellFor {
-            packages = p: [ p."${pname}" ];
-            buildInputs = with pkgs.haskellPackages; [
+          ghc922 = let hp = pkgs.haskell.packages.ghc922; in hp.shellFor {
+            packages = p: [
+              p.${pname}
+            ];
+            buildInputs = with hp; [
               cabal-install
               ghcid
             ];
@@ -78,7 +82,7 @@
           };
         };
 
-        devShell = self.devShells.${system}.dev;
+        devShell = self.devShells.${system}.ghc922;
 
         inherit overlay overlays;
       }
