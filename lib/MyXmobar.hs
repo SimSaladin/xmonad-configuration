@@ -436,12 +436,10 @@ myStatusBar screen@(S sid) = do
 
 xmobarRunExec :: ScreenId -> Rectangle -> Map.Map NamedLoggerId Posix.Fd -> IO ()
 xmobarRunExec screen sr fds = do
+  binDir <- dataDir <$> io getDirectories
   rds <- mapM (fmap printFd . Posix.dup) fds
-  exec $ program exe [show screen, show sr, show rds]
+  exec $ program (binDir ++ "/xmobar-run") [show screen, show sr, show rds]
   where
-    -- exe = "/home/sim/.config/xmonad/result-build/bin/xmobar-run"
-    exe = "/home/sim/.local/share/xmonad/xmobar-run"
-
     printFd :: Posix.Fd -> String
     printFd = printf "/dev/fd/%i" . fromEnum
 
