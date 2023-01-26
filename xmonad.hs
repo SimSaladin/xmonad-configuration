@@ -107,6 +107,7 @@ import qualified XMonad.Util.Rectangle                 as Rect
 import           XMonad.Util.Types                     (Direction1D(..), Direction2D(..))
 import qualified XMonad.Util.WindowProperties          as WinProp
 import           XMonad.Layout.StateFull (focusTracking)
+import           XMonad.Config.Gnome (gnomeRegister)
 
 import qualified Data.List                             as L
 import qualified Data.Map                              as M
@@ -147,10 +148,11 @@ main = xmonad =<< myConfig
 
 myConfig :: IO (XConfig _)
 myConfig =
-    debugging
-  . restoreWorkspaces
-  . urgencyHook Notify.urgencyHook
-  . myWallpapers
+    -- debugging
+  restoreWorkspaces
+  -- . urgencyHook Notify.urgencyHook
+  -- . myWallpapers
+  . applyC (\xc -> xc {  startupHook     = gnomeRegister <+> startupHook xc })
   -- FS.fullscreen
   . applyC (\xc -> xc
       {  handleEventHook = handleEventHook xc <+> FS.fullscreenEventHook
@@ -166,7 +168,7 @@ myConfig =
   . applyC (\xc -> xc
       { startupHook =
               startupHook xc
-              <+> Notify.startupHook
+              -- <+> Notify.startupHook
               <+> setEWMHDesktopGeometry
               <+> scratchpadsStartupHook myScratchpads
       , handleEventHook =
@@ -259,7 +261,7 @@ myLayout =
   . ManageDocks.avoidStruts -- NOTE: Apply avoidStruts late so that other modifiers aren't affected.
   . maximizeWithPadding 90 -- maximize overrides magnifier
   . magnify
-  . mySpacing 1 2
+  -- . mySpacing 1 2
   . windowNavigation
   $ toggledMods switchedLayouts
   where
@@ -365,7 +367,8 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     -- TODO use constructs like this instead of WindowCmd etc. sum types.
     "M-S-c"      >+ cmdT @"Kill (1 copy) window (X.A.CopyWindow)" CW.kill1
     "M-r M-S-c"  >+ cmdT @"Signal process (SIGKILL) of focused window (_NET_WM_PID)" (withFocused (signalProcessBy Posix.sigKILL))
-    "M-$"        >+ spawn (sh "physlock -p \"${HOSTNAME} ${DISPLAY}\"") ? "Lock (physlock)"
+    "M-$"        >+ -- spawn (sh "physlock -p \"${HOSTNAME} ${DISPLAY}\"") ? "Lock (physlock)"
+     spawn (sh "dbus-send --type=method_call --dest=org.gnome.ScreenSaver /org/gnome/ScreenSaver org.gnome.ScreenSaver.Lock") ? "Lock the screen"
     "M-<Esc>"    >+ MyDebug.DebugStackSet
     "M-q"        >+ myRecompileRestart False True ? "Recompile && Restart"
     "M-C-q"      >+ myRecompileRestart True False ? "Recompile (force)"

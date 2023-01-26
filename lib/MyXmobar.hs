@@ -131,7 +131,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
     , litB symNet <> dynnetworkB networkArgs 50
     , alsaB "default" "Master" volumeArgs
     , litB symKbd <> kbdAndLocks
-    , litB symBTC <> btcPrice 600
+    -- , litB symBTC <> btcPrice 600
     , whenB (widthAtLeast 2500) $ weatherB skyConditions "LOWG" (weatherArgs "Graz") 1800
     , litB symClock <> dateZoneB dateFmt "" "" 10
     ]
