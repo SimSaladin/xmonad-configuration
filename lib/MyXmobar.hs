@@ -111,12 +111,13 @@ myXBConfig (S sid) sr pipes = fromConfigB $
      modifyConfigB (\cfg -> cfg { XB.position = XB.OnScreen sid XB.Top })
   <> modifyConfigB (\cfg -> cfg { XB.bgColor = colBase03, XB.fgColor = colBase0, XB.allDesktops = False })
   <> modifyConfigB (\cfg -> cfg { XB.borderWidth = 0 })
+  <> modifyConfigB (\cfg -> cfg { XB.dpi = 161 }) -- default 96
   <> ifB (widthAtLeast 2500)
     (setFontsB
       [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 7) } -- default 0
-      , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 7), fontOffset = Just 16 } -- CJK 1
-      , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8), fontOffset = Just 16 } -- symbols 2
-      , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7), fontOffset = Just 18 } -- symbols 3
+      , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 7) } --, fontOffset = Just 16 } -- CJK 1
+      , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8) } --, fontOffset = Just 16 } -- symbols 2
+      , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7) } --, fontOffset = Just 18 } -- symbols 3
       , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- monospace 4
       , def { fontFamily = "Noto Sans",              fontSize = Just (PointSize 8) } -- normal 5
       ]
@@ -142,7 +143,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
     , litB symMem <> memoryB memoryArgs 50
     , topMemB topMemArgs 50
     , litB symNet <> dynnetworkB networkArgs 50
-    , alsaB "default" "Master" volumeArgs
+    --, alsaB "default" "Master" volumeArgs
     , litB symKbd <> kbdAndLocks
     , litB symBTC <> btcPrice 600
     , whenB (widthAtLeast 2500) $ weatherB skyConditions "LOWG" (weatherArgs "Graz") 1800

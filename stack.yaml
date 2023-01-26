@@ -1,26 +1,25 @@
 ---
-resolver: lts-19.31
-#compiler: ghc-9.0.2
+resolver: lts-20.8
 packages:
   - .
+
 flags:
   xmobar:
     all_extensions: true
   xmonad-configuration:
     optimize: true
-    via-llvm: true
+    #via-llvm: true
+
 extra-deps:
-# - ./xmonad
   - git: https://github.com/xmonad/xmonad.git
     commit: cf4d6f31b1751318309ddcc1c5fd8aa71a6a453a
+  #- ./xmonad
   - ./xmonad-contrib
 # - git: https://github.com/SimSaladin/xmonad-contrib.git
 #   commit: f1fa51049cce6e01ac8a03095ad57bd52972da7e
-  - xmobar-0.45
-  - cairo-0.13.8.2@sha256:ef1709c3c4d2c6d68a9a51d9f220dccc0745f6468d2d0868c15a7ecdf8f325a1,4078
-  - pango-0.13.8.2@sha256:d4057ebddade4cde3e25d7755b5e030e7a7e56fe7365afd37916a7bba46d3fd9,3917
-  - iwlib-0.1.0@sha256:226e4582d6878166a172ff98c868e25c4ed478ab28ab493498e464b1fe19d39a,921
-  - netlink-1.1.1.0@sha256:d83424b5ba9921191449e4b1f53c7cba7f4375f2c55a9b737c77e982e1f40d00,3689
-  - glib-0.13.8.2@sha256:f44b829e741b3c3244d523f60b058701dfc067ff64c2ba61d43be4cccfc2663d,3156
-allow-newer: true
-#hide-source-paths: false
+  # X11                                                                   |
+  - git: https://github.com/xmonad/X11
+    commit: 8a33c4ebe7d0a1be96073d8c019f1f3901bbf344 # master
+  - xmobar-0.46 # (Released 1/2023)
+  - iwlib-0.1.0 # Wanted by xmobar
+  - netlink-1.1.1.0 # Wanted by xmobar
