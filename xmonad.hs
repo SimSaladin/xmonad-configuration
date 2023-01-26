@@ -30,6 +30,7 @@
 
 module Main (main) where
 
+import qualified XMonad.Util.WindowState as WS
 import XMonad.Actions.TiledWindowDragging (dragWindow)
 import XMonad.Layout.DraggingVisualizer (draggingVisualizer)
 
@@ -148,9 +149,10 @@ main = xmonad =<< myConfig
 myConfig :: IO (XConfig _)
 myConfig =
     debugging
+  . applyC myStoredWindowState
   . restoreWorkspaces
   . urgencyHook Notify.urgencyHook
-  . myWallpapers
+  -- . myWallpapers
   -- FS.fullscreen
   . applyC (\xc -> xc
       {  handleEventHook = handleEventHook xc <+> FS.fullscreenEventHook
@@ -195,7 +197,8 @@ myConfig =
                           <+> ToggleHook.toggleHook "keepfocus" (InsertPosition.insertPosition InsertPosition.Above InsertPosition.Older) -- default: Above Never
                           <+> SpawnOn.manageSpawn
                           <+> FloatNext.floatNextHook
-  , layoutHook = myLayout
+  , layoutHook         = myLayout
+  , handleExtraArgs    = myExtraArgs
   }
     where
     urgencyHook :: (Urgency.UrgencyHook h, LayoutClass l Window) => h -> XConfig' l
@@ -223,6 +226,33 @@ myConfig =
         when (a == a' && v' == fromIntegral v1) $ XMonad.Actions.Minimize.maximizeWindow w
         return (All True)
     removeMinimizedState _ = return (All True)
+
+myExtraArgs xs theConf = case xs of
+                           [] -> return theConf
+                           _  -> fail ("unrecognized flags:" ++ show xs)
+
+newtype WStoreTag = WStoreTag { _WStoreTag :: WorkspaceId }
+  deriving (Show, Read)
+
+myStoredWindowState :: XConfig l -> XConfig l
+myStoredWindowState xconf = xconf
+  { startupHook = startupHook xconf <> storeWindowStates
+  , manageHook  = restoreWindowStates <+> manageHook xconf }
+
+storeWindowStates :: X ()
+storeWindowStates = do
+  wset   <- gets windowset
+  mapped <- gets mapped
+  sequence_
+    [ WS.runStateQuery (put $ Just $ WStoreTag (W.tag ws)) w
+      | ws <- W.workspaces wset, w <- W.integrate' (W.stack ws), w `elem` mapped ]
+
+restoreWindowStates :: ManageHook
+restoreWindowStates =
+  (tagQ </=? Nothing) -->> (\(Just t) -> windowTag /=? Just t --> doShift t)
+  where
+      tagQ :: Query (Maybe WorkspaceId)
+      tagQ = fmap (fmap _WStoreTag) (WS.getQuery get)
 
 myManageHook :: ManageHook
 myManageHook = composeOne
@@ -316,7 +346,7 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
       skeys        = zip screenKeys [PScreen.P 0 ..]
       tags         = zip tagKeys [(0::Int)..]
       tagKeys      = map (:[]) ['a'..'z']
-      screenKeys   = map (:[]) "wvz"
+      screenKeys   = map (:[]) "wvza"
 
       pactl args = spawnProg "pactl" args ? unwords ("[PULSE]":args)
       mpc cmd    = spawn "mpc" [cmd] ? printf "MPD: %s" cmd
@@ -368,8 +398,9 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-$"        >+ spawn (sh "physlock -p \"${HOSTNAME} ${DISPLAY}\"") ? "Lock (physlock)"
     "M-<Esc>"    >+ MyDebug.DebugStackSet
     "M-q"        >+ myRecompileRestart False True ? "Recompile && Restart"
+    "M-S-q"      >+ myRestart ? "Restart"
     "M-C-q"      >+ myRecompileRestart True False ? "Recompile (force)"
-    "M-S-q"      >+ io exitSuccess ? "Exit"
+    -- "M-S-q"      >+ io exitSuccess ? "Exit"
     "M-<Print>"  >+ takeScreenshot
 
   group "Prompts (XMonad)" $ do
@@ -396,7 +427,8 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-r b"            >+ spawnDialog "bluetoothctl" ? "bluetoothctl"
     "M-r m"            >+ spawn "xmag" ["-mag","2","-source","960x540"] ? "xmag"
     "M-r t"            >+ tmux Nothing ? "Terminal (tmux)"
-    "M-r w"            >+ spawnDialog "scripts/fzf-wiki" ? "vimwiki (fzf)"
+    "M-r f"            >+ spawnOnceKitty "fself" "bash" ["-lic", "fself"] doCenterFloat
+      -- spawnDialog ("bash", ["-ic", "fself"]) ? "FZF multi-prompt"
 
   group "Prompts (Execute)" $ do
     "M-r e"   >+ environPrompt xpConfig               ? "Environ (Prompt)"
@@ -412,14 +444,13 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-+"                     >+ volume 3
     "M--"                     >+ volume (-3)
     "M-#"                     >+ togglePad "ncmpcpp"
-    "M-c m"                   >+ spawnDialog "pulsemixer" ? "pulsemixer"
+    "M-c m"                   >+ spawnOnceKitty "Pulsemixer" "pulsemixer" [] doCenterFloat
     "M-c n"                   >+ mpc "next"
     "M-c p"                   >+ mpc "prev"
     "M-c t"                   >+ mpc "toggle"
     "M-c y"                   >+ mpc "single"
     "M-c r"                   >+ mpc "random"
     "M-c s"                   >+ spawn "sink-switch" ? "Toggle speakers-phones output [PA]" -- uses a custom script in ~/bin
-    "M-c P"                   >+ spawnDialog "scripts/fzf-mpc" ? "Browse playlists (FZF)"
     "<XF86AudioPlay>"         >+ mpc "toggle"
     "<XF86AudioStop>"         >+ mpc "stop"
     "<XF86AudioPrev>"         >+ mpc "prev"
@@ -579,23 +610,30 @@ myRecompileRestart :: Bool -> Bool -> X ()
 myRecompileRestart rcFlag rsFlag = do
   saveWorkspaces
   dirs <- io getDirectories
-  dir <- asks (dataDir . directories)
-  prog <- io System.Environment.getProgName
-  void $ userCode $ Notify.notifyLastS "Recompiling..."
-  _p <- xfork $ whenM' (recompile dirs rcFlag) $ when' rsFlag $
-    spawn $ program (dir </> prog) ["--restart"]
+  let cmd = binFileName dirs
+  void $ userCode $ Notify.notifyLastS (printf "Recompiling & restarting (%s)" cmd)
+  _rePID <- xfork $ do
+    whenM' (recompile dirs rcFlag) $ do
+      trace "recompile successful"
+      when' rsFlag $ do
+        trace "restarting"
+        exec $ program cmd ["--restart"]
+        --spawn $ program cmd ["--restart"]
+        return ()
+    trace "finished recompile sequence"
   return ()
 
 myRestart :: X ()
 myRestart = do
-  dir  <- asks (dataDir . directories)
-  prog <- io System.Environment.getProgName
-  let msg = printf "Restart (%s)..." prog
+  saveWorkspaces
+  dirs <- io getDirectories
+  let cmd = binFileName dirs
+  let msg = printf "Restart (%s)..." cmd
   trace msg
   void $ userCode $ Notify.notifyLastS msg
-  Notify.exitHook
-  MyXmobar.exitHook
-  restart (dir </> prog) True
+  void $ userCode $ MyXmobar.exitHook
+  void $ userCode $ Notify.exitHook
+  restart (binFileName dirs) True
 
 -- Modified to not fire on spammy property updates (e.g. status bar stuff).
 myUpdatePointer :: _ -> _ -> X ()
@@ -990,4 +1028,25 @@ applyIO f xc = xc >>= f
 
 type XConfig' l = IO (XConfig l) -> IO (XConfig l)
 
-foo = "bar"
+-- * XXX
+
+spawnOnceKitty nm prog args mh = go ? ("Spawn " <> nm) where
+  go = toggleScratchpad' True sp
+  sp = SP nm start q mh []
+  q = liftX (dynPadCurrent nm) >>= maybe (pure False) (\w -> (== w) <$> ask)
+  start = do
+    response <- readProcess "/home/sim/kitt-y" (prog : args)
+    case readMaybe response of
+      Just wid -> dynPadSet' sp (Just wid)
+      Nothing -> trace "Error: could not figure out window id"
+
+--  termCfg = def
+--    { terminalName = "pulsemixer"
+--    , terminalGeometry = "130x40"
+--    , terminalProg = Just $ \args -> program "/usr/bin/kitty" $ [
+--        "--single-instance",
+--        "--wait-for-single-instance-window-close",
+--        -- "--detach",
+--        "--listen-on=unix:/run/user/1000/kitty", {--o initial_window_height=40c -o initial_window_width=130c -}
+--        "sh", "-lc", "\"$@\"", "-" ] ++ args
+--    }

@@ -67,13 +67,14 @@ library
       X11
     , base
     , containers
-    , dbus
+    , dbus >=1.2.24
     , directory
     , filepath
     , free
     , multimap
     , process
     , random
+    , rawfilepath
     , text
     , unix
     , utf8-string

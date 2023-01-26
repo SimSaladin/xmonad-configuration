@@ -77,17 +77,22 @@ import           XMonad.Util.Run          (seconds)
 
 import           Prelude
 
+import           Control.Concurrent (myThreadId, killThread, mkWeakThreadId)
 import qualified Control.Exception        as E
 import           Control.Monad
 import qualified Data.Map                 as M
 import           Data.String              (IsString)
 import qualified System.IO                as IO
 import qualified System.Posix             as Posix
+import qualified System.Posix.Signals             as Signals
+import           GHC.Weak                 (deRefWeak)
 import qualified System.Process           as P
 import           System.Timeout           (timeout)
 import           Text.Printf              (printf)
 
 import           Codec.Binary.UTF8.String (encodeString)
+
+import RawFilePath
 
 -- X.Core.spawn          - void (spawnPID ...)
 -- X.Core.spawnPID       - xfork (executeFile ...)
@@ -174,16 +179,20 @@ data TerminalCfg = TerminalCfg
   , terminalGeometry  :: String
   , terminalHold      :: Bool
   , terminalSaveLines :: Int
-  } deriving (Show)
+  , terminalProg      :: Maybe ([String] -> P.CmdSpec)
+  }
 
 instance Default TerminalCfg where
-  def = TerminalCfg "" "" False (-1)
+  def = TerminalCfg "" "" False (-1) Nothing
 
-spawnTerm :: (HasCmd X cmd) => TerminalCfg -> cmd -> X ()
+spawnTerm :: (HasCmd X cmd, Spawn (P.CmdSpec -> X r)) => TerminalCfg -> cmd -> X r
 spawnTerm tcfg cmd = do
-  termProg <- asks (terminal . config)
-  termCmd  <- cmdSpec cmd
-  spawn $ program termProg $ opts termCmd
+  termCmd <- cmdSpec cmd
+  case terminalProg tcfg of
+    Just go -> spawn $ go $ concat [ prog : args | (prog,args) <- [showCmdSpec termCmd]]
+    Nothing   -> do
+      tprog <- asks (terminal . config)
+      spawn $ program tprog $ opts termCmd
     where
       opts cmd' = concat $
         [["-name", name] | name <- [terminalName tcfg], name /= ""] ++
@@ -302,10 +311,27 @@ spawnPipeIO x = io $ do
     (rd, wd) <- Posix.createPipe
     Posix.setFdOption wd Posix.CloseOnExec True
     wh <- Posix.fdToHandle wd
+    IO.hSetEncoding wh IO.utf8
     IO.hSetBuffering wh IO.LineBuffering
-    cpid <- xfork $ Posix.dupTo rd Posix.stdInput >> x
+
+    cpid <- xfork $ do
+      Posix.dupTo rd Posix.stdInput
+      ---- handle SIGTERM in the RTS
+      --runThreadIdWk <- mkWeakThreadId =<< myThreadId
+      --void $ Signals.installHandler
+      --  Signals.sigTERM
+      --  (Signals.CatchOnce $ do
+      --    runThreadIdMay <- deRefWeak runThreadIdWk
+      --    case runThreadIdMay of
+      --      Nothing -> return ()
+      --      Just runThreadId -> killThread runThreadId
+      --  )
+      --  Nothing
+      x
     Posix.closeFd rd
     return (wh, cpid)
+
+-- spawnPipeIO2 :: MonadIO m => IO () -> m (IO.Handle, Posix.ProcessID)
 
 -- LOGGING
 

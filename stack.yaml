@@ -6,6 +6,9 @@ packages:
 flags:
   xmobar:
     all_extensions: true
+  xmonad-configuration:
+    optimize: true
+    via-llvm: true
 extra-deps:
 # - ./xmonad
   - git: https://github.com/xmonad/xmonad.git

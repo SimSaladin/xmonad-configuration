@@ -1,30 +1,34 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
 #method=nix
 method=stack
 
 cd "$(dirname "$0")" || exit 1
 
-bin="${XDG_DATA_HOME:-"$HOME"/.local/share}/xmonad"
 exe="xmonad-$(uname -m)-linux"
-out=xmonad-x86_64-linux
-attr=xmonad-configuration
-attr=xmonad-configuration-fast
-
+flakeAttr=xmonad-configuration
+nixOut=result-build
+DEST=
 case $1 in
 	''|--*) : ;;
-	*)
-		bin=$(dirname "$(realpath -ms "$1")")
-		exe=$(basename "$1")
-		shift
-		;;
+	*) DEST=$(realpath -ms "$1"); shift ;;
 esac
 
 success() {
-	res=$1
-	echo "Build success. Installing $res as $bin/$exe"
-	ln -nsf "$res" "$bin/$exe"
-	ln -nsf "$res" ~/.cache/xmonad/"$exe"
+	res=$(realpath -e "$1")
+	bar=$(realpath -e "$2")
+	echo "Build success: $res"
+	for dst in "$DEST" "${XDG_CACHE_HOME:-"$HOME"/.cache}/xmonad/$exe" "${XDG_DATA_HOME:-"$HOME"/.local/share}/xmonad/$exe"; do
+		[ -n "$dst" ] || continue
+		dir="$(dirname "$(realpath -ms "$dst")")" || continue
+		if ! [ -e "$dir" ] && ! [ -w "$(dirname "$dir")" ] && ! mkdir -p "$dir"; then
+			continue
+		fi
+		echo "Installing as $dst"
+		ln -vnsf "$res" "$dst" || :
+		ln -vnsf "$bar" "${dst%/*}/xmobar-run" || :
+		#ln -vnsf "${res%/*}/xmobar-run" "${dst%/*}/xmobar-run" || :
+	done
 }
 
 failure() {
@@ -44,15 +48,15 @@ failure() {
 
 case $method in
 	nix )
-		if flock -n -E 6 . nix build -L --log-format raw ".#$attr" -o "$out"; then
-			success "$(realpath -e "$out/bin/xmonad-x86_64-linux")"
+		if flock -n -E 6 . nix -vL --log-format raw build ".#$flakeAttr" -o "$nixOut"; then
+			success "$nixOut/bin/"{"$exe",xmobar-run}
 		else
 			failure "$?"
 		fi
 		;;
 	stack )
 		if flock -n -E 6 . stack build --no-haddock --no-haddock-deps; then
-			success "$(realpath -e "$(stack path --dist-dir)/build/xmonad-x86_64-linux/xmonad-x86_64-linux")"
+			success "$(stack path --dist-dir)/build/"{"$exe/$exe","xmobar-run/xmobar-run"}
 		else
 			failure "$?"
 		fi

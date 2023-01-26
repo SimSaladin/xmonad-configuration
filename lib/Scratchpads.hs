@@ -18,16 +18,20 @@
 
 module Scratchpads
   (
-  Scratchpad,
+  Scratchpad(..),
   mkPad,
   mkPadDyn,
   exclusive,
   scratchpadsStartupHook,
   managePads,
   -- * Actions
-  togglePad, cyclePads, scratchpadCompl,
+  togglePad,
+  toggleScratchpad,
+  toggleScratchpad',
+  cyclePads,
+  scratchpadCompl,
   -- * Dynamic Client Management
-  dynUpdateFocusedWindow,
+  dynUpdateFocusedWindow, dynPadSet, dynPadSet', dynPadCurrent,
   ) where
 
 import           Control.Monad
@@ -62,18 +66,20 @@ data Scratchpad = SP
   , spExclusive :: [String]
   }
 
-
-data Scratchpads = Scratchpads { xpads :: [Scratchpad], dynWins :: M.Map ScratchpadId Window }
-  deriving Typeable
-
+data Scratchpads = Scratchpads { xpads :: M.Map ScratchpadId Scratchpad } deriving Typeable
 instance ExtensionClass Scratchpads where
-  initialValue = Scratchpads mempty mempty
+  initialValue = Scratchpads mempty
+
+data ScratchpadDyn = ScratchpadDyn { dynWins :: M.Map ScratchpadId Window } deriving (Typeable, Read, Show)
+instance ExtensionClass ScratchpadDyn where
+  initialValue = ScratchpadDyn mempty
+  extensionType = PersistentExtension
 
 -- * Actions
 
 
 cyclePads = (? "Toggle next scratchpad (cyclic)") $ do
-    padsAll <- XS.gets xpads
+    padsAll <- XS.gets (M.elems . xpads)
     padsExist <- withWindowSet $ \wset ->
       catMaybes <$> mapM (runQuery xpad) (W.allWindows wset)
     let pads = [pad | pad <- padsAll, any ((==) (spName pad) . spName) padsExist]
@@ -103,9 +109,13 @@ dynPadSet k w = do
     forM_ old (toggleWindow (Just True) idHook)
     whenJust w (\_ -> togglePadNoCreate k)
 
+dynPadSet' :: Scratchpad -> Maybe Window -> X ()
+dynPadSet' sp w = do
+  XS.modify $ \s -> s { xpads = M.alter (const $ Just sp) (spName sp) (xpads s) }
+  XS.modify $ \s -> s { dynWins = M.alter (const w) (spName sp) (dynWins s) }
+
 dynPadCurrent :: ScratchpadId -> X (Maybe Window)
 dynPadCurrent k = XS.gets $ M.lookup k . dynWins
-
 
 -- | First, minimize any pads exclusive with target.
 -- Then, look for an existing instance in focused workspace.
@@ -113,10 +123,17 @@ dynPadCurrent k = XS.gets $ M.lookup k . dynWins
 toggleScratchpad :: Bool -> ScratchpadId -> X ()
 toggleScratchpad createIfMissing k = do
     spads <- XS.gets xpads
-    whenJust (L.find ((k ==) . spName) spads) $ \sp ->
-      toggle sp [x |x<-spads, spName x `elem` spExclusive sp]
+    whenJust (M.lookup k spads) $ toggleScratchpad' createIfMissing
+
+toggleScratchpad' :: Bool -> Scratchpad -> X ()
+toggleScratchpad' createIfMissing sp@SP{spQuery=q,spHook=h} = do
+    s <- XS.gets xpads
+    case M.lookup (spName sp) s of
+      Nothing -> XS.modify $ \s -> s { xpads = M.alter (const $ Just sp) (spName sp) (xpads s) }
+      Just _ -> return ()
+    toggle [x |x<-M.elems s, spName x `elem` spExclusive sp]
   where
-    toggle sp@SP{spQuery=q,spHook=h} excl = do
+    toggle excl = do
         -- trace ("togglePad: " ++ k ++ " " ++ show (map spName excl))
         minimizeScratchpads excl
         withWindowSet (filterM (runQuery q) . currentWindows) >>= \case
@@ -136,7 +153,8 @@ minimizeScratchpads xs = withWindowSet $ mapM_ hook . currentWindows
 -- * Hooks
 
 scratchpadsStartupHook :: [Scratchpad] -> X ()
-scratchpadsStartupHook pads = XS.modify $ \s -> s { xpads = pads }
+scratchpadsStartupHook pads = do
+  mapM_ (flip dynPadSet' Nothing) pads
 
 -- * ManageHooks
 
@@ -147,7 +165,7 @@ padManageHook :: Scratchpad -> MaybeManageHook
 padManageHook sp = spQuery sp -?> spHook sp
 
 xpad :: Query (Maybe Scratchpad)
-xpad = liftX (XS.gets xpads) >>= xpad'
+xpad = liftX (XS.gets xpads) >>= xpad' . M.elems
 
 xpad' :: [Scratchpad] -> Query (Maybe Scratchpad)
 xpad' = go where
