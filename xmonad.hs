@@ -169,7 +169,7 @@ myConfig = applyC id
   . applyC (\xc -> xc
       { startupHook =
               startupHook xc
-              -- <+> Notify.startupHook
+              <+> Notify.startupHook
               <+> setEWMHDesktopGeometry
               <+> scratchpadsStartupHook myScratchpads
       , handleEventHook =
