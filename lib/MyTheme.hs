@@ -105,14 +105,14 @@ gsconfig1 = def
   , GS.gs_cellheight  = 24
   , GS.gs_cellpadding = 5
   , GS.gs_navigate    = GS.navNSearch
-  , GS.gs_font        = show font2 -- (font 18)
+  --, GS.gs_font        = show font2 -- (font 18)
   , GS.gs_bordercolor = colCyan
   }
 
 xpConfig :: XP.XPConfig
 xpConfig = def
-  { XP.font                = show font2
-  , XP.bgColor             = colBase03
+  { {-XP.font                = show font2
+  ,-} XP.bgColor             = colBase03
   , XP.fgColor             = colBase1
   , XP.fgHLight            = colBlue
   , XP.bgHLight            = colBase02
