@@ -62,6 +62,7 @@ import           MyRun
 import           MyTheme
 import           StatusBar.XMobar
 import qualified Xmobar                               as XB
+import XMonad.Hooks.NamedLoggers
 
 -- * New stuff
 
@@ -112,8 +113,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
   <> modifyConfigB (\cfg -> cfg { XB.bgColor = colBase03, XB.fgColor = colBase0, XB.allDesktops = False })
   <> modifyConfigB (\cfg -> cfg { XB.borderWidth = 0 })
   <> modifyConfigB (\cfg -> cfg { XB.dpi = 161 }) -- default 96
-  <> ifB (widthAtLeast 2500)
-    (setFontsB
+  <> setFontsB
       [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 7) } -- default 0
       , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 7) } --, fontOffset = Just 16 } -- CJK 1
       , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8) } --, fontOffset = Just 16 } -- symbols 2
@@ -121,16 +121,6 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- monospace 4
       , def { fontFamily = "Noto Sans",              fontSize = Just (PointSize 8) } -- normal 5
       ]
-    )
-    (setFontsB
-      [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- default 0
-      , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 6), fontOffset = Just 13 } -- CJK 1
-      , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8), fontOffset = Just 16 } -- symbols 2
-      , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7), fontOffset = Just 18 } -- symbols 3
-      , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 6) } -- monospace 4
-      , def { fontFamily = "Noto Sans",              fontSize = Just (PointSize 6) } -- normal 5
-      ]
-    )
   <> litB enspace <> pipeReaderB "xmonad" "/dev/fd/0"
   <> whenB (widthAtLeast 2500) (litB emspace <> mpdB mpdArgs 50)
   <> "}"
@@ -325,80 +315,6 @@ exitHook :: X ()
 exitHook = cleanupNamedLoggers >> io sbCleanupAll
 -- XXX the "sbCleanupAll" is likely unnecessary. X.H.StatusBar should take care of that.
 
--- * Named Loggers
-
-data NamedLoggerId = NLogTitle | NLogLayout
-  deriving (Show, Read, Eq, Ord, Enum, Bounded)
-
-newtype NamedLoggersXS = NamedLoggersXS { nlLasts :: Map.Map (NamedLoggerId, ScreenId) String }
-
-instance ExtensionClass NamedLoggersXS where
-  initialValue = NamedLoggersXS mempty
-
-type NamedLoggers = Map.Map NamedLoggerId (Map.Map ScreenId (Maybe Handle, Maybe Handle)) -- (focused, unfocused)
-
-namedLoggersRef :: IORef NamedLoggers
-namedLoggersRef = unsafePerformIO (newIORef mempty)
-{-# NOINLINE namedLoggersRef #-}
-
-mkLogFd :: ScreenId -> NamedLoggerId -> IO (NamedLoggerId, Posix.Fd)
-mkLogFd s k = do
-  (rd,wd) <- Posix.createPipe
-  Posix.setFdOption wd Posix.CloseOnExec True
-  wh <- Posix.fdToHandle wd
-  IO.hSetBuffering wh IO.LineBuffering
-  addLogListener k s (Just wh, Nothing)
-  pure (k,rd)
-
-addLogListener :: NamedLoggerId -> ScreenId -> (Maybe Handle, Maybe Handle) -> IO () -- X ()
-addLogListener k s hs = io $ atomicModifyIORef namedLoggersRef $ \m -> (Map.insertWith (<>) k (Map.singleton s hs) m, ())
-
-cleanupNamedLoggers :: MonadIO m => m ()
-cleanupNamedLoggers = io $ do
-    trace "Cleaning up named loggers..."
-    logxs <- readIORef namedLoggersRef
-    forM_ [ (k,Map.keys a) | (k,a) <- Map.toList logxs ] $ uncurry closeNamedLoggers
-    trace "Named loggers cleaned up."
-
-closeNamedLoggers :: MonadIO m => NamedLoggerId -> [ScreenId] -> m ()
-closeNamedLoggers k [] = return ()
-closeNamedLoggers k hs = io $ do
-  rs <- atomicModifyIORef namedLoggersRef $ \m ->
-    let (r, m') = Map.updateLookupWithKey (\_ a -> Just $ Map.withoutKeys a (Set.fromList hs)) k m
-     in (m', r)
-  forM_ (catMaybes $ Map.elems (fromMaybe mempty rs) >>= \(a,b) -> [a,b]) (catchIO . IO.hClose)
-
-namedLogLazy :: NamedLoggerId -> Logger -> X ()
-namedLogLazy k lgr = lgr >>= \ms -> whenJust ms logIt
-  where
-    logIt str = do
-      sid <- curScreenId
-      res <- XS.gets (Map.lookup (k, sid) . nlLasts)
-      when (res /= Just str) (namedLogString k str)
-
-namedLogString :: NamedLoggerId -> String -> X ()
-namedLogString k str = do
-    s <- curScreenId
-    logxs <- io (readIORef namedLoggersRef)
-    whenJust (logxs Map.!? k) $ \slogm -> do
-      XS.modify $ \xs -> xs { nlLasts = Map.alter (const $ Just str) (k,s) (nlLasts xs) }
-      Map.traverseWithKey (writeBoth s) slogm >>= closeNamedLoggers k . catMaybes . Map.elems
-  where
-    writeBoth :: MonadIO m => ScreenId -> ScreenId -> (Maybe Handle, Maybe Handle) -> m (Maybe ScreenId) -- (Either String ())
-    writeBoth s s' (mf, mu)
-      | Just h <- if s == s' then mf else mu = io $ do
-        r <- timeout 100000 $ E.catch (fmap Right $ hPutStrLn h $ encodeString str) $ \(ex :: E.IOException) -> pure (Left ex)
-        case r of
-          Nothing         -> trace "namedLogString: timeout reached" >> return Nothing
-          Just (Left ex)  -> trace ("namedLogString: " ++ E.displayException ex) >> return (Just s')
-          Just (Right ()) -> return Nothing
-      | otherwise = return Nothing
-
-namedLoggersLogHook :: PP -> X ()
-namedLoggersLogHook pp = do
-  namedLogLazy NLogTitle  (ppTitle pp  `onLogger` logTitle)
-  namedLogLazy NLogLayout logLayout
-
 -- * Hacky StatusBar processes
 
 -- To keep track of status bars that execute as child processes.
@@ -421,18 +337,9 @@ myStatusBar screen@(S sid) = do
     where
       myStatusBar' :: Rectangle -> IO (Handle, ProcessID)
       myStatusBar' sr =
-        withNamedLogInputs $ \fds -> do
+        withNamedLogInputs screen $ \fds -> do
           trace $ printf "Spawning statusbar: screen=%i namedLoggers=%s" (fromEnum screen) (show fds)
           spawnPipeIO $ xmobarRunExec screen sr fds
-
-      withNamedLogInputs :: (Map.Map NamedLoggerId Posix.Fd -> IO a) -> IO a
-      withNamedLogInputs = E.bracket
-        (Map.fromList <$> mapM (mkLogFd screen) [minBound..maxBound])
-        closeLogFds
-
-      closeLogFds :: Map.Map NamedLoggerId Posix.Fd -> IO ()
-      closeLogFds = mapM_ $ catchIO . Posix.closeFd
-
 
 xmobarRunExec :: ScreenId -> Rectangle -> Map.Map NamedLoggerId Posix.Fd -> IO ()
 xmobarRunExec screen sr fds = do
@@ -443,6 +350,7 @@ xmobarRunExec screen sr fds = do
     printFd :: Posix.Fd -> String
     printFd = printf "/dev/fd/%i" . fromEnum
 
+-- | The main of the xmobar-run executable
 xmobarRunMain :: ScreenId -> Rectangle -> Map.Map NamedLoggerId FilePath -> IO ()
 xmobarRunMain screen sr rds = myXBConfig screen sr rds >>= XB.xmobar
 
