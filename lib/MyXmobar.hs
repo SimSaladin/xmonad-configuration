@@ -115,7 +115,8 @@ myXBConfig (S sid) sr pipes = fromConfigB $
   <> modifyConfigB (\cfg -> cfg { XB.dpi = 161 }) -- default 96
   <> setFontsB
       [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 7) } -- default 0
-      , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 7) } --, fontOffset = Just 16 } -- CJK 1
+      , def { fontFamily = "WenQuanYi Zen Hei",    fontSize = Just (PointSize 7) } --, fontOffset = Just 16 } -- CJK 1
+      -- , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 7) } --, fontOffset = Just 16 } -- CJK 1
       , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8) } --, fontOffset = Just 16 } -- symbols 2
       , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7) } --, fontOffset = Just 18 } -- symbols 3
       , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- monospace 4
@@ -263,15 +264,15 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       }
 
     mpdArgs = def
-      { monTemplate      = xbFontWqyMicroHei $ sepByConcat thinsp [xbFontDefault statei, artist <> fg colBase01 oendash <> title, album, xbFontMono flags]
+      { monTemplate      = sepByConcat thinsp [statei, artist <> fg colBase01 oendash <> title, album, flags]
       , monFieldWidthMax = 30
       , monFieldEllipsis = "…"
       , monExtraArgs     = [ "-P", fg colGreen  symPlay , "-Z", fg colYellow symPause , "-S", fg colOrange symStop ]
       } where
-          artist = fg colCyan "<artist>"
-          title  = fg colBase1 "<title>"
-          album  = fg colBase01 $ wrap "「" "」" $ fg colBlue "<album>"
-          flags  = fg colBase01 $ wrap "[" "]" $ fg colBase1 "<flags>"
+          artist = fg colCyan $ xbFontWqyMicroHei  "<artist>"
+          title  = fg colBase1 $ xbFontWqyMicroHei  "<title>"
+          album  = fg colBase01 $ wrap "「" "」" $ fg colBlue $ xbFontWqyMicroHei "<album>"
+          flags  = fg colBase01 $ wrap "[" "]" $ fg colBase1 $ xbFontMono "<flags>"
           statei = "<statei>"
 
     batteryArgs = def
