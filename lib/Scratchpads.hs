@@ -211,9 +211,13 @@ toggleWindow ma mh w = do
     (True, True)   | ma /= Just False -> modifyWindowSet (f . W.insertUp w . W.delete' w) >> maximizeWindowAndFocus w
     (True, False)  | ma /= Just False -> modifyWindowSet (W.currentTag >>= flip W.shiftWin w) >> windows f >> maximizeWindowAndFocus w
     (False, False) | ma /= Just False -> modifyWindowSet (W.currentTag >>= flip W.shiftWin w) >> windows f
-    (False, True)  | ma /= Just True  -> minimizeWindow w >> windows (W.peek >>= \w' -> maybe id W.focusWindow w' . W.shiftMaster . W.focusWindow w)
-        -- Above: Minimize & shift to master, so that we won't bump into the minimized window when refocusing after dead window.
-    _                                 -> return ()
+    (False, True)  | ma /= Just True  ->
+      do
+        windows (W.peek >>= \w' -> if w' == Just w then W.focusUp else id)
+        minimizeWindow w
+        -- shift to master, so that we won't bump into the minimized window when refocusing after dead window.
+        modifyWindowSet (W.peek >>= \w' -> maybe id W.focusWindow w' . W.shiftMaster . W.focusWindow w)
+    _ -> return ()
   where
     inCurrentWS = withWindowSet (return . elem w . currentWindows)
     isHidden = isInProperty "_NET_WM_STATE" "_NET_WM_STATE_HIDDEN"

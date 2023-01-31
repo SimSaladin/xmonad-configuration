@@ -1030,12 +1030,11 @@ type XConfig' l = IO (XConfig l) -> IO (XConfig l)
 
 -- * XXX
 
-spawnOnceKitty nm prog args mh = go ? ("Spawn " <> nm) where
-  go = toggleScratchpad' True sp
+spawnOnceKitty nm prog args mh = toggleScratchpad' True sp ? ("Spawn " <> nm) where
   sp = SP nm start q mh []
   q = liftX (dynPadCurrent nm) >>= maybe (pure False) (\w -> (== w) <$> ask)
   start = do
-    response <- readProcess "/home/sim/kitt-y" (prog : args)
+    response <- readProcess "/home/sim/kitt-y" (nm : prog : args)
     case readMaybe response of
       Just wid -> dynPadSet' sp (Just wid)
       Nothing -> trace "Error: could not figure out window id"
