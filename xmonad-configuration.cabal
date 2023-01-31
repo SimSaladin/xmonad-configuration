@@ -54,6 +54,7 @@ library
       XMonad.Config.CommandsKeysF
       XMonad.Config.Solarized
       XMonad.Hooks.EwmhDesktopsEx
+      XMonad.Hooks.NamedLoggers
       XMonad.Layout.Hinted
       XMonad.Prompt.Environ
       XMonad.Prompt.Qutebrowser
