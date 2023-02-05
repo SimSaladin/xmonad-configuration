@@ -14,9 +14,9 @@ extra-deps:
   - git: https://github.com/xmonad/xmonad.git
     commit: cf4d6f31b1751318309ddcc1c5fd8aa71a6a453a
   #- ./xmonad
-  - ./xmonad-contrib
-# - git: https://github.com/SimSaladin/xmonad-contrib.git
-#   commit: f1fa51049cce6e01ac8a03095ad57bd52972da7e
+  #- ./xmonad-contrib
+  - git: https://github.com/SimSaladin/xmonad-contrib.git
+    commit: 46e752870c65e6e0e04691f2856e09fe211f633a
   # X11                                                                   |
   - git: https://github.com/xmonad/X11
     commit: 8a33c4ebe7d0a1be96073d8c019f1f3901bbf344 # master

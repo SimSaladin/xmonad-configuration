@@ -16,6 +16,17 @@ packages:
     commit: cf4d6f31b1751318309ddcc1c5fd8aa71a6a453a
     git: https://github.com/xmonad/xmonad.git
 - completed:
+    commit: 46e752870c65e6e0e04691f2856e09fe211f633a
+    git: https://github.com/SimSaladin/xmonad-contrib.git
+    name: xmonad-contrib
+    pantry-tree:
+      sha256: 1f62a4dc8de758620c27b38a25be75cfe835398ec53bda7535c9418bf8e87ab8
+      size: 24371
+    version: 0.17.1.9
+  original:
+    commit: 46e752870c65e6e0e04691f2856e09fe211f633a
+    git: https://github.com/SimSaladin/xmonad-contrib.git
+- completed:
     commit: 8a33c4ebe7d0a1be96073d8c019f1f3901bbf344
     git: https://github.com/xmonad/X11
     name: X11

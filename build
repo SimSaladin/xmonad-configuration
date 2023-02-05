@@ -1,9 +1,12 @@
-#!/bin/bash -e
-
-#method=nix
-method=stack
+#!/usr/bin/env bash
+set -e
 
 cd "$(dirname "$0")" || exit 1
+
+method=stack
+if [ -e BUILD_WITH_NIX ]; then
+	method=nix
+fi
 
 exe="xmonad-$(uname -m)-linux"
 flakeAttr=xmonad-configuration
@@ -17,12 +20,12 @@ esac
 success() {
 	res=$(realpath -e "$1")
 	bar=$(realpath -e "$2")
-	echo "Build success: $res"
+	echo "Build success: $res $bar"
 	for dst in "$DEST" "${XDG_CACHE_HOME:-"$HOME"/.cache}/xmonad/$exe" "${XDG_DATA_HOME:-"$HOME"/.local/share}/xmonad/$exe"; do
 		[ -n "$dst" ] || continue
 		dir="$(dirname "$(realpath -ms "$dst")")" || continue
-		if ! [ -e "$dir" ] && ! [ -w "$(dirname "$dir")" ] && ! mkdir -p "$dir"; then
-			continue
+		if ! [ -e "$dir" ]; then
+			mkdir -p "$dir" || continue
 		fi
 		echo "Installing as $dst"
 		ln -vnsf "$res" "$dst" || :
