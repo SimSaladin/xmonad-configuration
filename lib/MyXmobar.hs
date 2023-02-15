@@ -32,8 +32,6 @@ module MyXmobar
 import           XMonad                               hiding (spawn, title)
 import qualified XMonad.StackSet                      as W
 
---import           XMonad.Actions.CopyWindow     (wsContainingCopies)
---import           XMonad.Actions.WorkspaceNames (workspaceNamesPP)
 import qualified XMonad.Actions.DynamicWorkspaceOrder as DO
 import qualified XMonad.Hooks.StatusBar               as SB
 import           XMonad.Hooks.StatusBar.PP            (PP(..), dynamicLogString, pad, shorten, wrap, xmobarRaw)
@@ -97,14 +95,13 @@ mkStatusBarConfig screenId = do
 -- * XMobar Config
 
 -- Fonts
-xbFontDefault       ,xbFontWqyMicroHei   ,xbFontTerminessNerd ,xbFontNotoSymbols2  ,xbFontMono          ,xbFontMonoFull      ,xbFontSansFull      :: String -> String
+xbFontDefault, xbFontWqyMicroHei, xbFontTerminessNerd, xbFontNotoSymbols2, xbFontMono, xbFontMonoFull :: String -> String
 xbFontDefault       = xmobarFont 0 -- CJK
 xbFontWqyMicroHei   = xmobarFont 1 -- CJK
 xbFontTerminessNerd = xmobarFont 2 -- symbols
 xbFontNotoSymbols2  = xmobarFont 3 -- symbols
 xbFontMono          = xbFontDefault
 xbFontMonoFull      = xmobarFont 4 -- monospace, larger
-xbFontSansFull      = xmobarFont 5 -- sans-serif, larger
 
 -- | Generate XMobar config
 myXBConfig :: ScreenId -> Rectangle -> Map.Map NamedLoggerId FilePath -> IO XB.Config
@@ -115,12 +112,10 @@ myXBConfig (S sid) sr pipes = fromConfigB $
   <> modifyConfigB (\cfg -> cfg { XB.dpi = 161 }) -- default 96
   <> setFontsB
       [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 7) } -- default 0
-      , def { fontFamily = "WenQuanYi Zen Hei",    fontSize = Just (PointSize 7) } --, fontOffset = Just 16 } -- CJK 1
-      -- , def { fontFamily = "WenQuanYi Micro Hei",    fontSize = Just (PointSize 7) } --, fontOffset = Just 16 } -- CJK 1
-      , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 8) } --, fontOffset = Just 16 } -- symbols 2
-      , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7) } --, fontOffset = Just 18 } -- symbols 3
+      , def { fontFamily = "WenQuanYi Zen Hei",      fontSize = Just (PointSize 7) } -- CJK 1
+      , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 7) } -- symbols 2
+      , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7) } -- symbols 3
       , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- monospace 4
-      , def { fontFamily = "Noto Sans",              fontSize = Just (PointSize 8) } -- normal 5
       ]
   <> litB enspace <> pipeReaderB "xmonad" "/dev/fd/0"
   <> whenB (widthAtLeast 2500) (litB emspace <> mpdB mpdArgs 50)
@@ -134,7 +129,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
     , litB symMem <> memoryB memoryArgs 50
     , topMemB topMemArgs 50
     , litB symNet <> dynnetworkB networkArgs 50
-    --, alsaB "default" "Master" volumeArgs
+    , alsaB "default" "Master" volumeArgs
     , litB symKbd <> kbdAndLocks
     , litB symBTC <> btcPrice 600
     , whenB (widthAtLeast 2500) $ weatherB skyConditions "LOWG" (weatherArgs "Graz") 1800
@@ -174,7 +169,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
           weeknum  = fg colBase01 "W%V"
           weekday  = fg colBase01 "%a"
           daymonth = fg colBase1 "%-d" <> "." <> fg colBase00 "%-m"
-          hourmin  = xbFontSansFull (fg colBase1 "%-H:%M")
+          hourmin  = fg colBase1 "%-H:%M"
           seconds  = xbFontMono (":" <> fg colBase01 "%S")
           zone     = xbFontMono (fg colBase01 "%Z")
 
@@ -231,7 +226,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       , monLowColor    = colBase01
       } where
         fmt1 :: Int -> String
-        fmt1 n = boxP 2 $ xbFontWqyMicroHei $ wrap hairsp thinsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<cpu%i>" n <> "%")
+        fmt1 n = xbFontWqyMicroHei $ wrap hairsp thinsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<cpu%i>" n <> "%")
 
     topMemArgs = def
       { monTemplate    = sepByConcat puncsp $ map fmt1 [1..2]
@@ -242,7 +237,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
       , monLowColor    = colBase01
       } where
         fmt1 :: Int -> String
-        fmt1 n = boxP 2 $ xbFontWqyMicroHei $ wrap hairsp hairsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<mem%i>" n)
+        fmt1 n = xbFontWqyMicroHei $ wrap hairsp hairsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<mem%i>" n)
 
     memoryArgs = def
       { monTemplate    = xbFontMonoFull "<usedratio>%"
@@ -372,18 +367,3 @@ terminate sId pId = do
       _       -> trace $ printf "Successfully terminated statusbar process PID=%i" (fromEnum pId)
   io . atomicModifyIORef sbarHackRef $ \xs -> (Map.adjustWithKey (\_ -> L.delete pId) sId xs, ()) -- insertWith (++) screen [pID] xs, h) -- \xs -> ((screen, pID) : xs, h)
   trace $ printf "Cleaned up statusbar screen=%i PID=%i" (fromEnum sId) (fromEnum pId)
-
--- * TODO
-
-{-
- - TODO since X.H.StatusBar{,.PP} refactoring:
- - ...
- - copies  <- wsContainingCopies
- - hiddens <- filterM (runQuery isHidden) (W.allWindows wset)
- - ...
- -   | W.tag w `elem` copies                                = ppCopies
- - ...
- -   | Just _ <- W.stack w >>= W.filter (`notElem` hiddens) = ppHidden pp
- -
-ppCopies = fg colYellow
--}

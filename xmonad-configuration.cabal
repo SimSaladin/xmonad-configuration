@@ -17,7 +17,6 @@ license:        BSD3
 build-type:     Simple
 extra-source-files:
     flake.nix
-    shell.nix
     stack.yaml
     stack.yaml.lock
     build
