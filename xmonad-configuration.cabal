@@ -20,7 +20,6 @@ extra-source-files:
     shell.nix
     stack.yaml
     stack.yaml.lock
-    stack.yaml~
     build
 extra-doc-files:
     README.md
