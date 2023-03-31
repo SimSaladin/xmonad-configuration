@@ -179,11 +179,12 @@ data TerminalCfg = TerminalCfg
   , terminalGeometry  :: String
   , terminalHold      :: Bool
   , terminalSaveLines :: Int
+  , terminalInstanceId :: String
   , terminalProg      :: Maybe ([String] -> P.CmdSpec)
   }
 
 instance Default TerminalCfg where
-  def = TerminalCfg "" "" False (-1) Nothing
+  def = TerminalCfg "" "" False (-1) "" Nothing
 
 spawnTerm :: (HasCmd X cmd, Spawn (P.CmdSpec -> X r)) => TerminalCfg -> cmd -> X r
 spawnTerm tcfg cmd = do
@@ -199,6 +200,7 @@ spawnTerm tcfg cmd = do
         [["-geometry", val] | val <- [terminalGeometry tcfg], val /= ""] ++
         [["-hold"] | terminalHold tcfg] ++
         [["-sl", show val] | val <- [terminalSaveLines tcfg], val >= 0] ++
+        [["-instance-id", val] | val <- [terminalInstanceId tcfg], val /= ""] ++
         ["-e" : prog : args | (prog,args) <- [showCmdSpec cmd'], prog /= ""]
 
 data UnitCfg = UnitCfg

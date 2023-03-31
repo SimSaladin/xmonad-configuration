@@ -568,7 +568,7 @@ myScratchpads :: [Scratchpad]
 myScratchpads =
     exclusive
     [ mkPad "tmux-0"     mhd  (appName =? "tmux-0")  (tmux (Just "0"))
-    , mkPad "ncmpcpp"    mhd  (appName =? "ncmpcpp") (spawnTerm def{terminalName = "ncmpcpp"} "ncmpcpp")
+    , mkPad "ncmpcpp"    mhd  (appName =? "ncmpcpp") (spawnTerm def{terminalInstanceId = "pads", terminalName = "ncmpcpp"} "ncmpcpp")
     ] ++ [mkPadDyn "dynamic" xpConfig idHook]
   where
     mhd  = doRFRR 0.2 0.1 0.6 0.6
@@ -598,7 +598,7 @@ spawnDialog' = spawnTerm def{ terminalName = "term-dialog", terminalGeometry = "
 
 -- | Attach tmux session (or create one) in a new terminal window.
 tmux :: Maybe String -> X ()
-tmux msession = spawnTerm def{ terminalName = maybe "" ("tmux-"++) msession, terminalSaveLines = 0 } $
+tmux msession = spawnTerm def{ terminalName = maybe "" ("tmux-"++) msession, terminalSaveLines = 0, terminalInstanceId = "pads" } $
     program "tmux" $ ["new-session", "-A"] ++ maybe [] (\sname -> ["-s", sname]) msession
 
 -- | Modified from XMonad.Main.handle
