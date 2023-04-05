@@ -426,7 +426,7 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-r c"            >+ clipmenu
     "M-r b"            >+ spawnDialog "bluetoothctl" ? "bluetoothctl"
     "M-r m"            >+ spawn "xmag" ["-mag","2","-source","960x540"] ? "xmag"
-    "M-r t"            >+ tmux Nothing ? "Terminal (tmux)"
+    "M-r t"            >+ spawnTermTmux def Nothing ? "Terminal (tmux)"
     "M-r f"            >+ spawnOnceKitty "fself" "bash" ["-lic", "fself"] doCenterFloat
       -- spawnDialog ("bash", ["-ic", "fself"]) ? "FZF multi-prompt"
 
@@ -567,12 +567,11 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
 myScratchpads :: [Scratchpad]
 myScratchpads =
     exclusive
-    [ mkPad "tmux-0"     mhd  (appName =? "tmux-0")  (tmux (Just "0"))
+    [ mkPad "tmux-0"     mhd  (appName =? "tmux-0")  (spawnTermTmux def{terminalInstanceId = "pads", terminalName = "tmux-0"} (Just "0"))
     , mkPad "ncmpcpp"    mhd  (appName =? "ncmpcpp") (spawnTerm def{terminalInstanceId = "pads", terminalName = "ncmpcpp"} "ncmpcpp")
     ] ++ [mkPadDyn "dynamic" xpConfig idHook]
   where
     mhd  = doRFRR 0.2 0.1 0.6 0.6
-    --mhd' = doRFRR 0.2 0.1 0.7 0.7 -- TODO
     doRFRR x y w h = doRectFloat (W.RationalRect x y w h)
 
 -- * Wallpapers
@@ -597,9 +596,13 @@ spawnDialog  = spawnTerm def{ terminalName = "term-dialog", terminalGeometry = "
 spawnDialog' = spawnTerm def{ terminalName = "term-dialog", terminalGeometry = "130x40", terminalHold = True }
 
 -- | Attach tmux session (or create one) in a new terminal window.
-tmux :: Maybe String -> X ()
-tmux msession = spawnTerm def{ terminalName = maybe "" ("tmux-"++) msession, terminalSaveLines = 0, terminalInstanceId = "pads" } $
-    program "tmux" $ ["new-session", "-A"] ++ maybe [] (\sname -> ["-s", sname]) msession
+spawnTermTmux :: TerminalCfg -> Maybe String -> X ()
+spawnTermTmux tcfg ms = spawnTerm tcfg{ terminalSaveLines = 0 } $
+    program "tmux" $ ["new-session", "-A"] ++ maybe [] (\s -> ["-s", s]) ms
+
+spawnOnceKitty nm prog args mh = toggleScratchpad' True sp ? ("Spawn " <> nm) where
+  sp = SP nm start (appName =? nm) mh []
+  start = spawnTerm def{terminalInstanceId = "pads", terminalName = nm} $ program prog args
 
 -- | Modified from XMonad.Main.handle
 myRestartEventHook :: Event -> X All
@@ -1027,25 +1030,3 @@ applyIO :: (XConfig l -> IO (XConfig l)) -> XConfig' l
 applyIO f xc = xc >>= f
 
 type XConfig' l = IO (XConfig l) -> IO (XConfig l)
-
--- * XXX
-
-spawnOnceKitty nm prog args mh = toggleScratchpad' True sp ? ("Spawn " <> nm) where
-  sp = SP nm start q mh []
-  q = liftX (dynPadCurrent nm) >>= maybe (pure False) (\w -> (== w) <$> ask)
-  start = do
-    response <- readProcess "/home/sim/kitt-y" (nm : prog : args)
-    case readMaybe response of
-      Just wid -> dynPadSet' sp (Just wid)
-      Nothing -> trace "Error: could not figure out window id"
-
---  termCfg = def
---    { terminalName = "pulsemixer"
---    , terminalGeometry = "130x40"
---    , terminalProg = Just $ \args -> program "/usr/bin/kitty" $ [
---        "--single-instance",
---        "--wait-for-single-instance-window-close",
---        -- "--detach",
---        "--listen-on=unix:/run/user/1000/kitty", {--o initial_window_height=40c -o initial_window_width=130c -}
---        "sh", "-lc", "\"$@\"", "-" ] ++ args
---    }
