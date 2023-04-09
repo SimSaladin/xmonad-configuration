@@ -18,7 +18,7 @@
       inputs.git-ignore-nix.follows = "git-ignore-nix";
     };
     xmonad-contrib = {
-      url = "github:SimSaladin/xmonad-contrib?ref=develop-2023";
+      url = "github:SimSaladin/xmonad-contrib?ref=develop";
       #url = "git+file:///home/sim/.config/xmonad/xmonad-contrib";
       inputs.flake-utils.follows = "flake-utils";
       inputs.nixpkgs.follows = "nixpkgs";

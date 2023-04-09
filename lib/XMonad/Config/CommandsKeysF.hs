@@ -154,14 +154,13 @@ interp sk xc = interp'
     alg (CommandW i c x)      = mappend mempty{bCommandsW = M.singleton i c} <$> x
 
 addAll :: ShowKeys -> Cmd l () -> XConfig l -> IO (XConfig l)
-addAll sk cmds xc = do
-  builder@Builder{..} <- interp sk xc cmds
-  return $ xc { keys = const mempty }
-    `EZ.additionalKeys` [(k,NA.getAction v) | (k,v) <- toKeys maxBound sk (keysList builder) xc]
+addAll sk cmds conf = do
+  builder@Builder{..} <- interp sk conf cmds
+  return $ conf
+    { keys = const mempty
+    , startupHook = startupHook conf >> XS.put builder }
+    `EZ.additionalKeys` [(k,NA.getAction v) | (k,v) <- toKeys maxBound sk (keysList builder) conf]
     `EZ.additionalMouseBindings` [(b,NA.getAction . command . c) | (b,ix) <- M.toList bButtons, Just c <- [M.lookup ix bCommandsW]]
-    `saveState` builder
-  where
-    saveState xc' st = xc' { startupHook = startupHook xc' >> XS.put st }
 
 keysList :: Builder -> [([GroupName],(EZKey,SomeCmd))]
 keysList Builder{..} = go [] bKeys

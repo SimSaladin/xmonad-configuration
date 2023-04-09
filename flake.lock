@@ -220,16 +220,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1675198078,
-        "narHash": "sha256-J9Pg+9Rqy/a/XcQxDWMgUWWqoMMkRSgTawLE6qD8u+o=",
+        "lastModified": 1681058270,
+        "narHash": "sha256-kw/80eLr5QZs0w1LJG/t/smPo4nBkJTCswLtvqza73I=",
         "owner": "SimSaladin",
         "repo": "xmonad-contrib",
-        "rev": "46e752870c65e6e0e04691f2856e09fe211f633a",
+        "rev": "d5c31c7fa19d37f746e6d822dcb8aaaaf4d5f0f0",
         "type": "github"
       },
       "original": {
         "owner": "SimSaladin",
-        "ref": "develop-2023",
+        "ref": "develop",
         "repo": "xmonad-contrib",
         "type": "github"
       }
