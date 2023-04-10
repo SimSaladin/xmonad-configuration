@@ -49,8 +49,7 @@ instance IsCmd Navigate where
 newtype Toggle' t a = Toggle' t
 
 instance (Show t, Typeable t, Transformer t a, Typeable a) => IsCmd (Toggle' t a) where
-  command (Toggle' t) = NA.NamedAction (sendMessage msg, [desc]) where
-    msg = Toggle t
+  command (Toggle' t) = NA.NamedAction (sendMessage (Toggle t), [desc]) where
     desc = "Toggle " <> show t <> " (" <> show (typeOf t) <> ")"
 
   cmdEnum _ = [] -- TODO

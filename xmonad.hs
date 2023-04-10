@@ -30,9 +30,6 @@
 
 module Main (main) where
 
-import qualified XMonad.Util.WindowState as WS
-import XMonad.Actions.TiledWindowDragging (dragWindow)
-import XMonad.Layout.DraggingVisualizer (draggingVisualizer)
 
 import           Prelude
 
@@ -40,10 +37,11 @@ import           XMonad                                hiding (spawn)
 import           XMonad.Prelude                        hiding (group)
 import qualified XMonad.StackSet                       as W
 
+import           XMonad.Actions.AfterDrag              (ifClick)
 import qualified XMonad.Actions.CopyWindow             as CW
 import           XMonad.Actions.CycleRecentWS          (cycleWindowSets)
-import           XMonad.Actions.CycleWS                (WSType(..))
 import qualified XMonad.Actions.CycleWS                as CycleWS
+import           XMonad.Actions.CycleWS                (WSType(..))
 import qualified XMonad.Actions.DynamicWorkspaceGroups as WSG
 import qualified XMonad.Actions.DynamicWorkspaceOrder  as DO
 import qualified XMonad.Actions.DynamicWorkspaces      as DynWS
@@ -58,8 +56,8 @@ import           XMonad.Actions.OnScreen               (Focus(..), onScreen)
 import qualified XMonad.Actions.PhysicalScreens        as PScreen
 import qualified XMonad.Actions.RotSlaves              as RotSlaves
 import qualified XMonad.Actions.SpawnOn                as SpawnOn
+import           XMonad.Actions.TiledWindowDragging    (dragWindow)
 import qualified XMonad.Actions.UpdatePointer          as A (updatePointer)
-import XMonad.Actions.AfterDrag (ifClick)
 import qualified XMonad.Hooks.EwmhDesktops             as EWMH
 import           XMonad.Hooks.FadeWindows              (isFloating)
 import qualified XMonad.Hooks.FloatNext                as FloatNext
@@ -70,34 +68,35 @@ import           XMonad.Hooks.ManageHelpers
 import           XMonad.Hooks.Minimize                 (minimizeEventHook)
 import           XMonad.Hooks.Place                    (placeFocused, placeHook, simpleSmart, smart, underMouse, withGaps)
 import qualified XMonad.Hooks.ToggleHook               as ToggleHook
-import           XMonad.Hooks.UrgencyHook              (focusUrgent)
 import qualified XMonad.Hooks.UrgencyHook              as Urgency
+import           XMonad.Hooks.UrgencyHook              (focusUrgent)
 import           XMonad.Hooks.WallpaperSetter
 import qualified XMonad.Layout.BinarySpacePartition    as BSP
-import           XMonad.Layout.BoringWindows           (boringWindows)
 import qualified XMonad.Layout.BoringWindows           as BW
+import           XMonad.Layout.BoringWindows           (boringWindows)
+import           XMonad.Layout.DraggingVisualizer      (draggingVisualizer)
 import qualified XMonad.Layout.Fullscreen              as FS
 import           XMonad.Layout.GridVariants            (ChangeGridGeom(..), ChangeMasterGridGeom(..), Grid(Grid))
-import qualified XMonad.Layout.TallMastersCombo        as TMC
---import qualified XMonad.Layout.GridVariants          as GridV (Orientation(..))
 import qualified XMonad.Layout.LayoutHints             as LayoutHints
 import qualified XMonad.Layout.Magnifier               as Magnifier
 import           XMonad.Layout.Maximize                (maximizeRestore, maximizeWithPadding)
 import           XMonad.Layout.Minimize                (minimize)
 import qualified XMonad.Layout.Mosaic                  as Mosaic
 import qualified XMonad.Layout.MouseResizableTile      as MRT
-import qualified XMonad.Layout.MultiToggle             as MultiToggle
-import           XMonad.Layout.MultiToggle.Instances
+import           XMonad.Layout.MultiToggle             (mkToggle1)
+import           XMonad.Layout.MultiToggle.Instances   (StdTransformers(..))
 import qualified XMonad.Layout.NoBorders               as NoBorders
 import           XMonad.Layout.OneBig                  (OneBig(OneBig))
 import           XMonad.Layout.Reflect                 (REFLECTX(..), REFLECTY(..), reflectHoriz)
 import           XMonad.Layout.Spacing                 (Border(Border), spacingRaw, toggleScreenSpacingEnabled, toggleWindowSpacingEnabled)
+import           XMonad.Layout.StateFull               (focusTracking)
+import qualified XMonad.Layout.TallMastersCombo        as TMC
 import           XMonad.Layout.ThreeColumns            (ThreeCol(ThreeColMid))
 import qualified XMonad.Layout.WindowNavigation        as WindowNavigation
 import qualified XMonad.Prompt                         as XP
 import           XMonad.Prompt.ConfirmPrompt           (confirmPrompt)
-import           XMonad.Prompt.Input                   (inputPromptWithCompl, (?+))
 import qualified XMonad.Prompt.Input                   as XP.Input
+import           XMonad.Prompt.Input                   (inputPromptWithCompl, (?+))
 import qualified XMonad.Prompt.Pass                    as XP.Pass
 import qualified XMonad.Prompt.Shell                   as XP.Shell
 import qualified XMonad.Prompt.Window                  as XP (WindowPrompt(Goto), allWindows, windowPrompt)
@@ -107,7 +106,7 @@ import           XMonad.Util.PureX
 import qualified XMonad.Util.Rectangle                 as Rect
 import           XMonad.Util.Types                     (Direction1D(..), Direction2D(..))
 import qualified XMonad.Util.WindowProperties          as WinProp
-import           XMonad.Layout.StateFull (focusTracking)
+import qualified XMonad.Util.WindowState               as WS
 
 import qualified Data.List                             as L
 import qualified Data.Map                              as M
@@ -120,7 +119,6 @@ import           System.FilePath                       ((</>))
 import qualified System.Posix                          as Posix
 import           Text.Printf                           (printf)
 import           Text.Read                             (readMaybe)
-
 
 import           DesktopEntries
 import qualified MyDebug
@@ -148,22 +146,12 @@ main = xmonad =<< myConfig
 
 myConfig :: IO (XConfig _)
 myConfig =
-    debugging
+    applyC debugging
   . applyC myStoredWindowState
   . restoreWorkspaces
-  . urgencyHook Notify.urgencyHook
+  . applyC urgencyHook
   -- . myWallpapers
-  -- FS.fullscreen
-  . applyC (\xc -> xc
-      {  handleEventHook = handleEventHook xc <+> FS.fullscreenEventHook
-      ,  manageHook      = manageHook xc <+> FS.fullscreenManageHook
-      ,  startupHook     = startupHook xc <+> EWMH.fullscreenStartup
-      })
-  -- EWMH fullscreen
-  -- . applyC EWMH.ewmhFullscreen
---  . applyC (\xc -> xc
---      {  handleEventHook = handleEventHook xc <+> myFullscreenEventHook
---      ,  startupHook = startupHook xc <+> EWMH.fullscreenStartup })
+  . applyC myFullscreen
   . applyC EWMH.ewmh
   . applyC (\xc -> xc
       { startupHook =
@@ -176,12 +164,10 @@ myConfig =
               <+> minimizeEventHook    -- Handle minimize/maximize requests
               <+> removeMinimizedState
               <+> handleEventHook xc
-      , logHook =
-              logHook xc
-              <+> myUpdatePointer (0.5, 0.5) (0.4, 0.4)
+      , logHook = logHook xc <+> myUpdatePointer (0.5, 0.5) (0.4, 0.4)
       })
   . applyIO (CF.addAll myShowKeys myCmds)
-  . statusbars
+  . applyC statusbars
   . return $ def
   { terminal           = "my-terminal"
   , borderWidth        = 1
@@ -201,15 +187,23 @@ myConfig =
   , handleExtraArgs    = myExtraArgs
   }
     where
-    urgencyHook :: (Urgency.UrgencyHook h, LayoutClass l Window) => h -> XConfig' l
-    urgencyHook = applyC . flip Urgency.withUrgencyHookC Urgency.urgencyConfig { Urgency.suppressWhen = Urgency.Focused }
+    myFullscreen conf = conf
+      {  handleEventHook = handleEventHook conf <+> FS.fullscreenEventHook
+      ,  manageHook      = manageHook conf <+> FS.fullscreenManageHook
+      ,  startupHook     = startupHook conf <+> EWMH.fullscreenStartup
+      }
+      -- alt: EWMH fullscreen
+      -- EWMH.ewmhFullscreen $ xc
+      --     {  handleEventHook = handleEventHook xc <+> myFullscreenEventHook
+      --     ,  startupHook = startupHook xc <+> EWMH.fullscreenStartup })
 
-    statusbars = applyC $ \xc -> MyXmobar.myStatusBars . ManageDocks.docks $ xc
-      -- { handleEventHook = docksEventHookExtra <+> handleEventHook xc }
+    urgencyHook = Urgency.withUrgencyHookC Notify.urgencyHook Urgency.urgencyConfig { Urgency.suppressWhen = Urgency.Focused }
 
-    debugging = applyC $ \xc -> xc
-      { handleEventHook = MyDebug.debugEventHook <+> handleEventHook xc
-      , manageHook      = MyDebug.myDebugManageHook <+> XMonad.Hooks.ManageDebug.maybeManageDebug <+> manageHook xc }
+    statusbars = MyXmobar.myStatusBars . ManageDocks.docks
+
+    debugging conf = conf
+      { handleEventHook = MyDebug.debugEventHook <+> handleEventHook conf
+      , manageHook      = MyDebug.myDebugManageHook <+> XMonad.Hooks.ManageDebug.maybeManageDebug <+> manageHook conf }
 
     -- Remove destroyed windows from the list of minimized windows, so that the state is reset next time that windowid
     -- is used.
@@ -259,13 +253,11 @@ myManageHook = composeOne
   [ managePads
   , transience
   , appName   =? "term-dialog"     -?> doCenterFloat
-  -- , appName   =? "pinentry-qt"     -?> doCenterFloat
   , className =? "feh"             -?> smartPlaceHook (16,5,16,5) (0,0) <+> doFloat
   , className =? "Xmessage"        -?> doCenterFloat
   , className =? "Xmag"            -?> doSideFloat NC
   , className =? "Nvidia-settings" -?> doCenterFloat
   , className =? "zoom" <&&> title /=? "Zoom Meeting" -?> doFloat
-  -- , isFullscreen -?> doFullFloat -- For EWMH fullscreen
   , isDialog                       -?> placeHook (underMouse (0.7,0.7)) <+> doFloat
   , isFloating =? False <&&> anyWindowCurWS (isFullscreen <&&> isFloating) -?> doFloat
   , isFloating =? True -?> doFloat
@@ -283,37 +275,43 @@ myLayout =
     minimize
   . boringWindows
   -- . draggingVisualizer -- TODO breaks dragWindow action somehow
+  . mkToggle1 NOBORDERS -- NOTE: needs to be above 'reduceBorders' to avoid border on a window that was just un-fullscreened
   . reduceBorders
-  . MultiToggle.mkToggle1 NBFULL -- NOTE: This replaces the layout, including modifiers applied before it.
+  . mkToggle1 NBFULL -- NOTE: This replaces the layout, including modifiers applied before it.
   . FS.fullscreenFull -- Fullscreen _NET_WM_STATE_FULLSCREEN layout support.
   . ManageDocks.avoidStruts -- NOTE: Apply avoidStruts late so that other modifiers aren't affected.
   . maximizeWithPadding 90 -- maximize overrides magnifier
   . magnify
   . mySpacing 1 2
-  . windowNavigation
-  $ toggledMods switchedLayouts
+  . windowNavigation -- apply on top of any modifiers that might modify placement of tiled windows
+  . mkToggle1 (HINTSPLACEMENT (0.5, 0.5))
+  . mkToggle1 REFLECTX -- NOTE: MIRROR with REFLECTX/Y is most intuitive when mirror goes first.
+  . mkToggle1 REFLECTY
+  . mkToggle1 MIRROR
+  $ bsp
+  ||| grid
+  ||| tmsWithGrid
+  ||| threeColMid
+  ||| oneBig
+  ||| tall
+  ||| mouseResizable
   where
-    switchedLayouts = bsp ||| tmsWithGrid ||| grid ||| threeColMid ||| oneBig ||| tall ||| mouseResizable -- ||| full
-    tmsWithGrid = TMC.tmsCombineTwo True 1 (3/100) (10/16) (TMC.RowsOrColumns True) grid -- (TMC.RowsOrColumns False)
     bsp = BSP.emptyBSP
-    --tpp = TPP.TwoPanePersistent Nothing (3/100) (1/2)
-    tall = Tall 1 (3/100) (1/2)
     grid = reflectHoriz (Grid (16/9))
+    tall = Tall 1 (3/100) (1/2)
     oneBig = OneBig (2/3) (2/3)
     threeColMid = ThreeColMid 1 (1/30) (4/9)
-
+    tmsWithGrid = TMC.tmsCombineTwo True 1 (3/100) (10/16) (TMC.RowsOrColumns True) grid
+    --tpp = TPP.TwoPanePersistent Nothing (3/100) (1/2)
     --splitGrid  = SplitGrid GridV.T 1 2 (11/18) (4/3) (5/100)
-    -- testing: this full + smartBorders instead of custom predicate
-    full = Full -- NoBorders.noBorders (FS.fullscreenFull Full)
-    mouseResizable = MRT.mouseResizableTileMirrored -- NOTE TODO: mirror modifier fails for this because mouse; could tip-toe around it with MRT.isMirrored maybe
+
+    -- TODO: mirror modifier fails for this because mouse; could tip-toe around it with MRT.isMirrored maybe
+    mouseResizable = MRT.mouseResizableTileMirrored
       { MRT.nmaster    = 2
       , MRT.masterFrac = 50%100
       , MRT.slaveFrac  = 50%100 }
 
     reduceBorders = NoBorders.lessBorders NoBorders.Screen
-    -- XXX: are these equivalent?
-    --reduceBorders = NoBorders.lessBorders MyAmbiguity
-
     magnify = Magnifier.magnifyTop 1.3 (Magnifier.NoMaster 4) False
 
     -- NOTE: WindowNavigation interacts badly with some modifiers like "maximize" and "spacing", apply those after it.
@@ -321,15 +319,7 @@ myLayout =
     -- NOTE: WindowNavigation spams lots of errors like this:
     --       "xmonad: X11 error: BadValue (integer parameter out of range for operation), request code=91, error code=2"
     -- since a recent change in xmonad core, without certain patch to xmonad-contrib (TODO: send upstream)
-    --
     windowNavigation = WindowNavigation.configurableNavigation (WindowNavigation.navigateColor colBase00)
-
-    toggledMods =
-        MultiToggle.mkToggle1 HINT
-      . MultiToggle.mkToggle1 NOBORDERS
-      . MultiToggle.mkToggle1 REFLECTX -- NOTE: MIRROR with REFLECTX/Y is most intuitive when mirror goes first.
-      . MultiToggle.mkToggle1 REFLECTY
-      . MultiToggle.mkToggle1 MIRROR
 
     mySpacing :: Integer -> Integer -> _
     mySpacing sd wd = spacingRaw True (f sd) True (f wd) True
@@ -341,7 +331,7 @@ myCmds :: (LayoutClass l Window, Read (l Window)) => CF.Cmd l ()
 myCmds = CF.hinted "Commands" $ \helpCmd -> do
 
   let
-      toggle1 a = Toggle' a
+      toggle1 = Toggle'
 
       skeys        = zip screenKeys [PScreen.P 0 ..]
       tags         = zip tagKeys [(0::Int)..]
@@ -475,7 +465,7 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-m"         >+ MaximizeRestore
     "M-b s"       >+ ToggleScreenSpacing :>> ToggleWindowSpacing
     "M-b b"       >+ toggle1 NOBORDERS
-    "M-b h"       >+ toggle1 HINT
+    "M-b h"       >+ toggle1 (HINTSPLACEMENT (0.5, 0.5))
     "M-b f"       >+ toggle1 NBFULL
     "M-b m"       >+ toggle1 MIRROR
     "M-b x"       >+ toggle1 REFLECTX
@@ -634,8 +624,8 @@ myRestart = do
   let msg = printf "Restart (%s)..." cmd
   trace msg
   void $ userCode $ Notify.notifyLastS msg
-  void $ userCode $ MyXmobar.exitHook
-  void $ userCode $ Notify.exitHook
+  void $ userCode MyXmobar.exitHook
+  void $ userCode Notify.exitHook
   restart (binFileName dirs) True
 
 -- Modified to not fire on spammy property updates (e.g. status bar stuff).
@@ -823,7 +813,7 @@ type LayoutCommand = "Layout" :??
    , SendMessage Magnifier.MagnifyMsg
    , Mosaic.Aspect
    , Toggle' StdTransformers Window
-   , Toggle' HINT Window
+   , Toggle' LayoutHintsTransformers Window
    , Toggle' REFLECTX Window
    , Toggle' REFLECTY Window
    --, WA.WindowArrangerMsg
@@ -948,18 +938,18 @@ instance IsCmd MyFloatCmd where
   command (SnapShrink d2 p) = withFocused (FloatSnap.snapShrink d2 p) ? printf "Shrink %s (FloatSnap)" (show d2)
 
 instance IsCmd WindowCmd where
-  command FocusMaster               = BW.focusMaster                                            ? "Focus master (BoringWindows)"
-  command FocusUp                   = BW.focusUp                                                ? "Focus up (BoringWindows)"
-  command FocusDown                 = BW.focusDown                                              ? "Focus down (BoringWindows)"
-  command FocusUrgent               = focusUrgent                                               ? "Focus urgent window"
-  command SwapMaster                = windows W.swapMaster                                      ? "Swap to master"
-  command SwapUp                    = windows W.swapUp                                          ? "Swap up"
-  command SwapDown                  = windows W.swapDown                                        ? "Swap down"
-  command RotSlavesDown             = RotSlaves.rotSlavesDown                                   ? "Rotate slaves down"
-  command RotSlavesUp               = RotSlaves.rotSlavesUp                                     ? "Rotate slaves up"
-  command RotAllDown                = RotSlaves.rotAllDown                                      ? "Rotate down"
-  command RotAllUp                  = RotSlaves.rotAllUp                                        ? "Rotate up"
-  command (FocusSwapMaster w)       = windows (W.focusWindow w >> W.swapMaster)   ? "Focus window & swap it master"
+  command FocusMaster               = BW.focusMaster          ? "Focus master (BoringWindows)"
+  command FocusUp                   = BW.focusUp              ? "Focus up (BoringWindows)"
+  command FocusDown                 = BW.focusDown            ? "Focus down (BoringWindows)"
+  command FocusUrgent               = focusUrgent             ? "Focus urgent window"
+  command SwapMaster                = windows W.swapMaster    ? "Swap to master"
+  command SwapUp                    = windows W.swapUp        ? "Swap up"
+  command SwapDown                  = windows W.swapDown      ? "Swap down"
+  command RotSlavesDown             = RotSlaves.rotSlavesDown ? "Rotate slaves down"
+  command RotSlavesUp               = RotSlaves.rotSlavesUp   ? "Rotate slaves up"
+  command RotAllDown                = RotSlaves.rotAllDown    ? "Rotate down"
+  command RotAllUp                  = RotSlaves.rotAllUp      ? "Rotate up"
+  command (FocusSwapMaster w)       = windows (W.focusWindow w >> W.swapMaster) ? "Focus window & swap it master"
   command ToggleFocusedWindowBorder = (withFocused toggleBorder >> refresh) ? "Toggle focused window border"
   command (MaximizeWindow w)        = XMonad.Actions.Minimize.maximizeWindow w ? "Maximize window"
   command (MinimizeWindow w)        = XMonad.Actions.Minimize.minimizeWindow w ? "Minimize window"
@@ -1004,29 +994,12 @@ saveWorkspaces = do
       f x@(Right StateExtension{})        = (show (typeOf x), "n/a")
       f x@(Right (PersistentExtension a)) = (show (typeOf x), show a)
 
--- * MyAmbiguity LayoutMod (NoBorders.SetsAmbiguous)
-
-data MyAmbiguity = MyAmbiguity deriving (Read, Show)
-
-instance NoBorders.SetsAmbiguous MyAmbiguity where
-  hiddens MyAmbiguity{} wset lr _mst wrs = tiled wrs `L.union` floats
-    where
-      tiled [(w,_)] = [w]
-      tiled xs      = [w | (w,r) <- xs, r == lr]
-      floats =
-        [w |
-          W.Screen{workspace=wspace, screenDetail=SD sr} <- W.screens wset
-        , w  <- W.integrate' $ W.stack wspace
-        , wr <- maybeToList $ M.lookup w (W.floating wset)
-        , sr == scaleRationalRect sr wr
-        ]
-
 -- * Configuration helpers
+
+type XConfig' l = IO (XConfig l) -> IO (XConfig l)
 
 applyC :: (XConfig l -> XConfig l) -> XConfig' l
 applyC f xc = xc <&> f
 
 applyIO :: (XConfig l -> IO (XConfig l)) -> XConfig' l
 applyIO f xc = xc >>= f
-
-type XConfig' l = IO (XConfig l) -> IO (XConfig l)

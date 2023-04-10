@@ -5,15 +5,20 @@ module XMonad.Layout.Hinted where
 
 import           XMonad
 
-import           XMonad.Layout.LayoutHints    (layoutHintsWithPlacement)
+import           XMonad.Layout.LayoutHints    (layoutHints, layoutHintsToCenter, layoutHintsWithPlacement)
 import           XMonad.Layout.LayoutModifier (ModifiedLayout(..))
 import           XMonad.Layout.MultiToggle    (Transformer(..))
 import           XMonad.Layout.Renamed        (Rename(PrependWords), renamed)
 
-data HINT = HINT deriving (Eq, Show, Read)
+------- instances for MultiToggle ---------
+-- TODO: upstream to xmonad-contrib:X.L.LayoutHints
 
-instance Transformer HINT Window where
-  transform HINT x k = k
-    --(renamed [PrependWords "Hint"] $ layoutHintsToCenter x)
-    (renamed [PrependWords "Hint"] $ layoutHintsWithPlacement (0.5,0.5) x)
-    (\(ModifiedLayout _ (ModifiedLayout _ l)) -> l)
+data LayoutHintsTransformers = HINTS -- ^ 'layoutHints'
+           | HINTSCENTER -- ^ 'layoutHintsToCenter'
+           | HINTSPLACEMENT (Double, Double) -- ^ 'layoutHintsWithPlacement'
+           deriving (Eq, Show, Read)
+
+instance Transformer LayoutHintsTransformers Window where
+  transform HINTS              x k = k (renamed [PrependWords "Hinted"] $ layoutHints x) (\(ModifiedLayout _ (ModifiedLayout _ l)) -> l)
+  transform HINTSCENTER        x k = k (renamed [PrependWords "HintedC"] $ layoutHintsToCenter x) (\(ModifiedLayout _ (ModifiedLayout _ l)) -> l)
+  transform (HINTSPLACEMENT a) x k = k (renamed [PrependWords "Hinted'"] $ layoutHintsWithPlacement a x) (\(ModifiedLayout _ (ModifiedLayout _ l)) -> l)
