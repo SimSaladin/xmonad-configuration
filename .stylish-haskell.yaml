@@ -240,7 +240,6 @@ language_extensions:
   - EmptyCase  # \case { }. Since 7.8.1
   - MultiWayIf  # Since 7.6.1
   - PackageImports  # Since 6.10.1
-  - TrustWorth  # Enable safe import keyword. Since 7.2.1 (Safe/TrustWorthy) 7.4.1 (Unsafe)
   - ExplicitNamespaces  # Enable type keyword in import&export lists. Implied by TypeOperators. Since 7.6.1
   - BlockArguments  # when foo do …. Since 8.6.1
   - BangPatterns  # Since 6.8.1
