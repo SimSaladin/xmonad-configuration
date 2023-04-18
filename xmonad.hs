@@ -339,7 +339,7 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
       screenKeys   = map (:[]) "wvza"
 
       pactl args = spawnProg "pactl" args ? unwords ("[PULSE]":args)
-      mpc cmd    = spawn "mpc" [cmd] ? printf "MPD: %s" cmd
+      mpc args   = spawn "mpc" args ? printf "MPD: %s" (unwords args)
       clipmenu   = spawn "clipmenu" ["-p", "clipmenu", "-i"] ? "clipmenu"
 
       toggleMuteSource = pactl ["set-source-mute", "@DEFAULT_SOURCE@", "toggle"]
@@ -435,16 +435,18 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M--"                     >+ volume (-3)
     "M-#"                     >+ togglePad "ncmpcpp"
     "M-c m"                   >+ spawnOnceKitty "Pulsemixer" "pulsemixer" [] doCenterFloat
-    "M-c n"                   >+ mpc "next"
-    "M-c p"                   >+ mpc "prev"
-    "M-c t"                   >+ mpc "toggle"
-    "M-c y"                   >+ mpc "single"
-    "M-c r"                   >+ mpc "random"
+    "M-c n"                   >+ mpc ["next"]
+    "M-c p"                   >+ mpc ["prev"]
+    "M-c t"                   >+ mpc ["toggle"]
+    "M-c y"                   >+ mpc ["single", "once"]
+    "M-c r"                   >+ mpc ["random"]
+    "M-c +"                   >+ mpc ["volume", "+3"]
+    "M-c -"                   >+ mpc ["volume", "-3"]
     "M-c s"                   >+ spawn "sink-switch" ? "Toggle speakers-phones output [PA]" -- uses a custom script in ~/bin
-    "<XF86AudioPlay>"         >+ mpc "toggle"
-    "<XF86AudioStop>"         >+ mpc "stop"
-    "<XF86AudioPrev>"         >+ mpc "prev"
-    "<XF86AudioNext>"         >+ mpc "next"
+    "<XF86AudioPlay>"         >+ mpc ["toggle"]
+    "<XF86AudioStop>"         >+ mpc ["stop"]
+    "<XF86AudioPrev>"         >+ mpc ["prev"]
+    "<XF86AudioNext>"         >+ mpc ["next"]
     "<XF86AudioMute>"         >+ toggleMuteSink
     "<XF86AudioMicMute>"      >+ toggleMuteSource
     "<XF86AudioRaiseVolume>"  >+ volume 3
