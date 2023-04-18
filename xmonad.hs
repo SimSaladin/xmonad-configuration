@@ -340,7 +340,6 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
 
       pactl args = spawnProg "pactl" args ? unwords ("[PULSE]":args)
       mpc args   = spawn "mpc" args ? printf "MPD: %s" (unwords args)
-      clipmenu   = spawn "clipmenu" ["-p", "clipmenu", "-i"] ? "clipmenu"
 
       toggleMuteSource = pactl ["set-source-mute", "@DEFAULT_SOURCE@", "toggle"]
       toggleMuteSink   = pactl ["set-sink-mute", "@DEFAULT_SINK@", "toggle"]
@@ -413,12 +412,13 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-r S-r"          >+ spawnPrompt xpConfig "Execute (T)"       ((\c -> spawnDialog' $ program (head c) (tail c)) . words) ? "Execute (Prompt)"
     "M-r <Return>"     >+ spawnPrompt xpConfig "Execute shell"     (spawnUnit def . shell)  ? "Execute shell (Prompt)"
     "M-r S-<Return>"   >+ spawnPrompt xpConfig "Execute shell (T)" (spawnDialog' . shell) ? "Execute shell in terminal (Prompt)"
-    "M-r c"            >+ clipmenu
+    "M-r c"            >+ spawn "clipmenu" ["-p", "clipmenu", "-i"] ? "clipmenu"
     "M-r b"            >+ spawnDialog "bluetoothctl" ? "bluetoothctl"
     "M-r m"            >+ spawn "xmag" ["-mag","2","-source","960x540"] ? "xmag"
     "M-r t"            >+ spawnTermTmux def Nothing ? "Terminal (tmux)"
     "M-r f"            >+ spawnOnceKitty "fself" "bash" ["-lic", "fself"] doCenterFloat
       -- spawnDialog ("bash", ["-ic", "fself"]) ? "FZF multi-prompt"
+    "M-r a" >+ spawn "dmenu_autorandr" ? "autorandr (menu)"
 
   group "Prompts (Execute)" $ do
     "M-r e"   >+ environPrompt xpConfig               ? "Environ (Prompt)"
