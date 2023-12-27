@@ -69,7 +69,7 @@ dependencies:
 - random
 - rawfilepath
 ghc-options:
-- -dynamic
+#- -dynamic
 - -pie
 - -fPIC
 when:
