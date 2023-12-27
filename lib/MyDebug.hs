@@ -85,6 +85,7 @@ debugEventHook e = do
         xs <- mapM dumpAtom [v1,v2]
         trace $ "CLIENT MESSAGE _NET_WM_STATE: " ++ show s ++ " " ++ show xs ++ " -> " ++ show vals
       return (All True)
+    RRScreenChangeNotifyEvent{..} -> trace (show e) >> return (All True)
     _                                                    -> return (All True)
 
 dumpAtom :: Integral a => a -> X String

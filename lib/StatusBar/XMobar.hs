@@ -19,9 +19,9 @@ import           XMonad.Hooks.DynamicLog
 
 import qualified Xmobar                  as XB
 
+import           Data.String             (IsString(..))
 import qualified DBus
 import qualified DBus.Client
-import           Data.String             (IsString(..))
 import qualified System.Directory
 import qualified System.Random           as Random
 import           Text.Printf             (printf)
@@ -132,7 +132,7 @@ xmobarFont i = wrap (printf "<fn=%i>" i) "</fn>"
 -- * Commands
 
 kbdB :: ConfigB
-kbdB = CommandB "%kbd%" $ XB.Run $ XB.Kbd [("fi", "QWR"), ("dvp(dvp)","DVP")]
+kbdB = CommandB "%kbd%" $ XB.Run $ XB.Kbd [("fi", "QWR"), ("dvp-my(dvp-my)","DVP")]
 
 locksB :: ConfigB
 locksB = CommandB "%locks%" (XB.Run XB.Locks)

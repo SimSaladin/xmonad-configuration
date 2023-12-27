@@ -1,9 +1,10 @@
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE UnicodeSyntax         #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
@@ -30,9 +31,11 @@ module MyXmobar
   ) where
 
 import           XMonad                               hiding (spawn, title)
+import           XMonad.Prelude
 import qualified XMonad.StackSet                      as W
 
 import qualified XMonad.Actions.DynamicWorkspaceOrder as DO
+import           XMonad.Hooks.Rescreen                (addAfterRescreenHook)
 import qualified XMonad.Hooks.StatusBar               as SB
 import           XMonad.Hooks.StatusBar.PP            (PP(..), dynamicLogString, pad, shorten, wrap, xmobarRaw)
 import qualified XMonad.Util.ExtensibleState          as XS
@@ -48,6 +51,7 @@ import qualified Data.List                            as L
 import qualified Data.Map                             as Map
 import           Data.Maybe
 import qualified Data.Set                             as Set
+import           Graphics.X11.Xrandr                  (XRRMonitorInfo(..), xrrGetMonitors)
 import           Prelude
 import qualified System.IO                            as IO
 import           System.IO.Unsafe                     (unsafePerformIO)
@@ -63,37 +67,175 @@ import           XMonad.Hooks.NamedLoggers
 
 -- * New stuff
 
+data PerScreenSBParams = PerScreenSBParams
+  { sb_screen :: ScreenId
+  , sb_rect   :: Rectangle
+  , sb_dpi    :: Double
+  } deriving (Eq, Show, Read)
+
+-- Extended SB.StatusBarConfig
+data PerScreenSB = PerScreenSB
+  { sb_h_ref       :: IORef (Maybe Handle)
+  , sb_fds         :: Map.Map NamedLoggerId Posix.Fd
+  , sb_pid         :: ProcessID
+  , sb_params      :: PerScreenSBParams
+  , sb_logHook     :: X ()
+  , sb_cleanupHook :: X ()
+  }
+
+newtype PerScreenSBs = PerScreenSBs { getPerScreenSBs :: Map.Map ScreenId PerScreenSB }
+
+instance ExtensionClass PerScreenSBs where
+  initialValue = PerScreenSBs mempty
+
 myStatusBars :: XConfig l -> XConfig l
-myStatusBars xc = SB.dynamicSBs mkStatusBarConfig xc
-  { logHook = logHook xc <+> namedLoggersLogHook myFocusedPP }
-
-mkStatusBarConfig :: ScreenId -> IO SB.StatusBarConfig
-mkStatusBarConfig screenId = do
-  trace (printf "[StatusBar %i] Starting" (fromEnum screenId))
-  hRef <- newIORef (Nothing :: Maybe Handle)
-  return def
-    { SB.sbStartupHook = io (readIORef hRef) >>= start hRef
-    , SB.sbLogHook     = io (readIORef hRef) >>= (`whenJust` say hRef)
-    , SB.sbCleanupHook = io (readIORef hRef) >>= dead hRef
+myStatusBars xc =
+  addAfterRescreenHook updatePerScreenSBs $ xc
+    { startupHook = startupHook xc >> updatePerScreenSBs
+    , logHook     = logHook xc >> namedLoggersLogHook myFocusedPP >> logPerScreenSBs
     }
-      where
-        start hRef Just{}  = trace $ printf "[StatusBar %i] error: status bar is still running!" (fromEnum screenId)
-        start hRef Nothing = do
-          r <- io (myStatusBar screenId)
-          case r of
-            Just{}  -> io (writeIORef hRef r)
-            Nothing -> trace $ printf "[StatusBar %i] statusbar was NOT started!" (fromEnum screenId)
 
-        say hRef h = do
-          current <- curScreenId
-          let thisPP = if current == screenId then myFocusedPP else myUnfocusedPP
-          str <- workspaceNamesPP thisPP >>= dynamicLogString
-          io $ E.catch (hPutStrLn h str) (\(_::E.IOException) -> dead hRef (Just h))
+updatePerScreenSBs :: X ()
+updatePerScreenSBs = do
+  actualScreens <- withWindowSet $ return . map W.screen . W.screens
+  wanted <- catMaybes <$> mapM perScreenSBParams actualScreens
+  (toKeep, toKill) <- Map.partition (\sb -> sb_params sb `elem` wanted) . getPerScreenSBs <$> XS.get
+  -- kill unnecessary/changed statusbars
+  traverse_ sb_cleanupHook toKill
+  -- create missing statusbars
+  let missing = wanted \\ map sb_params (Map.elems toKeep)
+  created <- traverse createSB missing
+  XS.put (PerScreenSBs (toKeep <> Map.fromList (map (\sb -> (sb_screen $ sb_params sb, sb)) created)))
 
-        dead hRef mh = io $ do
-          whenJust mh $ catchIO . hClose
-          writeIORef hRef Nothing
-          sbCleanup screenId
+logPerScreenSBs :: X ()
+logPerScreenSBs = XS.get >>= traverse_ sb_logHook . getPerScreenSBs
+
+perScreenSBParams :: MonadIO m => ScreenId -> m (Maybe PerScreenSBParams)
+perScreenSBParams screen = io $ do
+  mrect <- getScreenRectangle screen
+  dpi <- getScreenDPI screen
+  case mrect of
+    Nothing   -> return Nothing
+    Just rect -> return $ Just $ PerScreenSBParams screen rect dpi
+
+createSB :: PerScreenSBParams -> X PerScreenSB
+createSB params@PerScreenSBParams{..} = io $ do
+  hRef <- newIORef Nothing
+  ((h, pID), fds) <- withNamedLogInputs sb_screen $ \fds -> do
+    sb <- spawnPipeIO $ xmobarRunExec sb_screen sb_rect sb_dpi fds
+    return (sb, fds)
+  writeIORef hRef (Just h)
+  -- TODO: unnecessary?
+  atomicModifyIORef sbarHackRef $ \xs -> (Map.insertWith (++) sb_screen [pID] xs, ())
+  h' <- IO.hShow h
+  trace $ printf "mkStatusBarConfig: screen %i: spawned (PID=%i, DPI=%.f, Rectangle=%s, logFd=%s, namedLoggers=%s)"
+    (fromEnum sb_screen) (fromEnum pID) sb_dpi (show sb_rect) h' (show fds)
+  return PerScreenSB
+    { sb_h_ref = hRef
+    , sb_fds = fds
+    , sb_pid = pID
+    , sb_params = params
+    , sb_logHook = logSB sb_screen hRef pID
+    , sb_cleanupHook = deadSB sb_screen hRef pID
+    }
+
+logSB :: ScreenId -> IORef (Maybe Handle) -> ProcessID -> X ()
+logSB screen hRef pID = io (readIORef hRef) >>= (`whenJust` log')
+  where
+    log' h = do
+      current <- curScreenId
+      let thisPP = if current == screen then myFocusedPP else myUnfocusedPP
+      str <- workspaceNamesPP thisPP >>= dynamicLogString
+      io $ E.catch (hPutStrLn h str) (\(_::E.IOException) -> deadSB screen hRef pID)
+
+deadSB :: MonadIO m => ScreenId -> IORef (Maybe Handle) -> ProcessID -> m ()
+deadSB screen hRef sbPID = io $ do
+  mh <- readIORef hRef
+  trace (printf "[StatusBar %i] shutting down (handle=%s)" (fromEnum screen) (show mh))
+  writeIORef hRef Nothing
+  whenJust mh $ catchIO . hClose
+  terminate screen sbPID
+
+  -- TODO unnecessary?
+  readIORef sbarHackRef >>= mapM_ (terminate screen) . Map.findWithDefault [] screen
+
+sbCleanupAll :: X ()
+sbCleanupAll = do
+  traverse_ sb_cleanupHook . getPerScreenSBs =<< XS.get
+  -- TODO unnecessary?
+  io (readIORef sbarHackRef) >>= mapM_ (uncurry terminate) . (\xs -> [ (k,p) | (k,ps) <- xs, p <- ps ]) . Map.toList
+
+exitHook :: X ()
+exitHook = cleanupNamedLoggers >> sbCleanupAll
+
+getScreenRectangle :: MonadIO m => ScreenId -> m (Maybe Rectangle)
+getScreenRectangle (S sid) = io $ do
+  screenInfo <- E.bracket (openDisplay "") closeDisplay getCleanedScreenInfo
+  return $ listToMaybe $ drop sid screenInfo
+
+-- | Get screen DPI. Defaults to 96.
+getScreenDPI :: ScreenId -> IO Double
+getScreenDPI (S sid) = do
+  mMonitors <- E.bracket (openDisplay "") closeDisplay $ \dpy -> do
+    root <- rootWindow dpy (defaultScreen dpy)
+    xrrGetMonitors dpy root True
+  case mMonitors of
+    Nothing -> trace "getScreenDPI: xrrGetMonitors returned nothing!" >> return 96
+    Just monitors ->
+      case drop sid monitors of
+        xrr_mon : _ -> do
+          let width = fi $ xrr_moninf_width xrr_mon :: Double -- 3840
+              height = fi $ xrr_moninf_height xrr_mon :: Double -- 2160
+              mwidth = fi $ xrr_moninf_mwidth xrr_mon :: Double -- 710
+              mheight = fi $ xrr_moninf_mheight xrr_mon :: Double -- 400
+              dpi = fi $ round $ (width / mwidth + height / mheight) * 25.4 / 2 :: Double
+          trace $ printf "getScreenDPI: screen %i: %.fx%.f %.fmm x %.fmm -> DPI=%.f" (fromEnum sid) width height mwidth mheight dpi
+          return dpi
+        _ -> trace (printf "getScreenDPI: did not find monitor for screen %i!" (fromEnum sid)) >> return 96
+
+-- * Hacky StatusBar processes
+
+-- To keep track of status bars that execute as child processes.
+sbarHackRef :: IORef (Map.Map ScreenId [ProcessID])
+sbarHackRef = unsafePerformIO (newIORef mempty)
+{-# NOINLINE sbarHackRef #-}
+
+xmobarRunExec :: ScreenId -> Rectangle -> Double -> Map.Map NamedLoggerId Posix.Fd -> IO ()
+xmobarRunExec screen sr dpi fds = do
+  binDir <- dataDir <$> io getDirectories
+  rds <- mapM (fmap printFd . Posix.dup) fds
+  exec $ program (binDir ++ "/xmobar-run") [show screen, show sr, show dpi, show rds]
+  where
+    printFd :: Posix.Fd -> String
+    printFd = printf "/dev/fd/%i" . fromEnum
+
+-- | The main of the xmobar-run executable
+xmobarRunMain :: ScreenId -> Rectangle -> Double -> Map.Map NamedLoggerId FilePath -> IO ()
+xmobarRunMain screen sr dpi rds = myXBConfig screen sr dpi rds >>= XB.xmobar
+
+terminate :: MonadIO m => ScreenId -> ProcessID -> m ()
+terminate sId pId = do
+  catchIO $ do
+    terminateDelay Posix.sigTERM 1000000{-1s-} $
+      terminateDelay Posix.sigTERM 2000000{-2s-} $
+          terminateDelay Posix.sigKILL 100000{-0.1s-} $
+            trace $ printf "[StatusBar %i] ERROR: failed to terminate statusbar process even with KILL! (PID=%i)" (fromEnum sId) (fromEnum pId)
+
+  -- TODO unnecessary?
+  io . atomicModifyIORef sbarHackRef $ \xs -> (Map.adjustWithKey (\_ -> L.delete pId) sId xs, ()) -- insertWith (++) screen [pID] xs, h) -- \xs -> ((screen, pID) : xs, h)
+
+  trace $ printf "[StatusBar %i] Cleaned up statusbar (PID=%i)" (fromEnum sId) (fromEnum pId)
+    where
+      terminateDelay :: Posix.Signal -> Int -> IO () -> IO ()
+      terminateDelay signal delay onFail = do
+        trace $ printf "[StatusBar %i] Terminating with %i (PID=%i)" (fromEnum sId) (fromEnum signal) (fromEnum pId)
+        Posix.signalProcessGroup signal {-Posix.sigTERM-} pId
+        threadDelay delay -- 1000000 -- 1s
+        r <- E.try @E.IOException $ Posix.getProcessStatus False{-block-} False{-stopped-} pId
+        case r of
+          Left _         -> return () -- process already exited
+          Right (Just r) -> trace $ printf "[StatusBar %i] Terminated with %i (PID=%i) %s" (fromEnum sId) (fromEnum signal) (fromEnum pId) (show r)
+          Right Nothing  -> onFail
 
 -- * XMobar Config
 
@@ -107,23 +249,27 @@ xbFontMono          = xbFontDefault
 xbFontMonoFull      = xmobarFont 4 -- monospace, larger
 
 -- | Generate XMobar config
-myXBConfig :: ScreenId -> Rectangle -> Map.Map NamedLoggerId FilePath -> IO XB.Config
-myXBConfig (S sid) sr pipes = fromConfigB $
-     modifyConfigB (\cfg -> cfg { XB.position = XB.OnScreen sid XB.Top })
-  <> modifyConfigB (\cfg -> cfg { XB.bgColor = colBase03, XB.fgColor = colBase0, XB.allDesktops = False })
-  <> modifyConfigB (\cfg -> cfg { XB.borderWidth = 0 })
-  <> modifyConfigB (\cfg -> cfg { XB.dpi = 161 }) -- default 96
+myXBConfig :: ScreenId -> Rectangle -> Double -> Map.Map NamedLoggerId FilePath -> IO XB.Config
+myXBConfig (S sid) sr dpi pipes = fromConfigB $
+     modifyConfigB (\cfg -> cfg
+       { XB.position = XB.OnScreen sid XB.Top
+       , XB.bgColor = colBase03
+       , XB.fgColor = colBase0
+       , XB.allDesktops = False
+       , XB.borderWidth = 0
+       , XB.dpi = dpi
+       })
   <> setFontsB
-      [ def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 7) } -- default 0
+      [ def { fontFamily = "NotoSans Nerd Font", {- "Noto Sans Mono", -} fontSize = Just (PointSize 7) } -- default 0
       , def { fontFamily = "WenQuanYi Zen Hei",      fontSize = Just (PointSize 7) } -- CJK 1
-      , def { fontFamily = "TerminessTTF Nerd Font", fontSize = Just (PointSize 7) } -- symbols 2
+      , def { fontFamily = "Terminess Nerd Font Mono" {- "TerminessTTF Nerd Font" -}, fontSize = Just (PointSize 7) } -- symbols 2
       , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7) } -- symbols 3
       , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- monospace 4
       ]
-  <> litB enspace <> pipeReaderB "xmonad" "/dev/fd/0"
+  <> pipeReaderB "xmonad" "/dev/fd/0"
   <> whenB (widthAtLeast 2500) (litB emspace <> mpdB mpdArgs 50)
-  <> "}"
   <> litB emspace <> bufferedPipeReaderB [ (time, False, fp) | (k, fp) <- Map.toList pipes, let time = myPipeTimeout k ]
+  <> "}"
   <> "{"
   <> batteryB batteryArgs 100
   <> sepByB (litB enspace)
@@ -135,7 +281,7 @@ myXBConfig (S sid) sr pipes = fromConfigB $
     , alsaB "default" "Master" volumeArgs
     , litB symKbd <> kbdAndLocks
     , litB symBTC <> btcPrice 600
-    , whenB (widthAtLeast 2500) $ weatherB skyConditions "LOWG" (weatherArgs "Graz") 1800
+    , whenB (widthAtLeast 2500) $ weatherB skyConditions "LOWG" (weatherArgs "Wien") 1800
     , litB symClock <> dateZoneB dateFmt "" "" 10
     ]
   where
@@ -150,18 +296,17 @@ myXBConfig (S sid) sr pipes = fromConfigB $
 
     underline = box' def{ boxType = BBottom, boxColor = colBase01, boxMargin = [0,3,0,0] }
 
-    symCpu    = fg colBase1 $ xbFontTerminessNerd "\57958 " <> hairsp -- 
-    symMem    = fg colBase1 $ xbFontTerminessNerd "\63578 " -- <> hairsp -- 
-    symNet    = fg colBase1 $ xbFontTerminessNerd "\62736 " -- <> hairsp -- "?" alt: ⇅
-    symBTC    = fg colBase1 $ xbFontTerminessNerd "\63147" <> hairsp -- ""
-    symKbd    = fg colBase1 $ xbFontTerminessNerd "\63506 " -- <> hairsp -- ""
-    symClock  = fg colBase1 $ xbFontTerminessNerd "\63055 " -- <> hairsp -- ""
-    symVolOn  = xbFontTerminessNerd "\61480 " <> hairsp -- ""
-    symVolOff = xbFontTerminessNerd "\61478 " <> hairsp -- ""
-    symPlay   = xbFontTerminessNerd "\61515 " -- <> hairsp -- "\58882" ">>"
-    symPause  = xbFontTerminessNerd "\61516 " -- <> hairsp -- "\63715" "||"
-    symStop   = xbFontTerminessNerd "\61517 " -- <> hairsp -- "><"
-    -- "🌡" XXX
+    symCpu    = fg colBase1 "\xe266 " -- nf-fae-chip
+    symMem    = fg colBase1 "\xf035b " -- nf-md-memory
+    symNet    = fg colBase1 "\xf0c9d " -- nf-md-network_outline
+    symBTC    = fg colBase1 "\xf15a " -- nf-fa-bitcoin
+    symKbd    = fg colBase1 "\xf0313 " -- nf-md-keyboard_variant
+    symClock  = fg colBase1 "\xe641 " -- nf-seti-clock
+    symVolOn  = "\xf057e " -- nf-md-volume_high
+    symVolOff = "\xf0581 " -- nf-md-volume_off
+    symPlay   = "\xf040a " -- nf-md-play
+    symPause  = "\xf03e4 " -- nf-md-pause
+    symStop   = "\xf04db " -- nf-md-stop
 
     kbdAndLocks = kbdB <> litB hairsp <> fgB colOrange locksB
 
@@ -309,86 +454,3 @@ workspaceNamesPP pp = do
 
 myUnfocusedPP :: PP
 myUnfocusedPP = myFocusedPP { ppCurrent = fg colBlue }
-
-exitHook :: X ()
-exitHook = cleanupNamedLoggers >> io sbCleanupAll
--- XXX the "sbCleanupAll" is likely unnecessary. X.H.StatusBar should take care of that.
-
--- * Hacky StatusBar processes
-
--- To keep track of status bars that execute as child processes.
-sbarHackRef :: IORef (Map.Map ScreenId [ProcessID])
-sbarHackRef = unsafePerformIO (newIORef mempty)
-{-# NOINLINE sbarHackRef #-}
-
--- | Create the status bar process for the screen id. Returns Nothing if it fails.
-myStatusBar :: ScreenId -> IO (Maybe Handle)
-myStatusBar screen@(S sid) = do
-  mr <- getScreenRectangle screen
-  case mr of
-    Nothing -> return Nothing
-    Just r -> do
-      sb@(h, pID) <- myStatusBar' r
-      atomicModifyIORef sbarHackRef $ \xs -> (Map.insertWith (++) screen [pID] xs, ())
-      trace $ printf "[StatusBar %i] Spawned (logFd=%s, PID=%i, Rectangle=%s)" (fromEnum sid) (show h) (fromEnum pID) (show r)
-      return (Just h)
-    where
-      myStatusBar' :: Rectangle -> IO (Handle, ProcessID)
-      myStatusBar' sr =
-        withNamedLogInputs screen $ \fds -> do
-          trace $ printf "[StatusBar %i] Spawning (namedLoggers=%s)" (fromEnum screen) (show fds)
-          spawnPipeIO $ xmobarRunExec screen sr fds
-
-getScreenRectangle :: ScreenId -> IO (Maybe Rectangle)
-getScreenRectangle (S sid) = do
-  screenInfo <- E.bracket (openDisplay "") closeDisplay getCleanedScreenInfo
-  case drop sid screenInfo of
-    r:_ -> return (Just r)
-    _   -> return Nothing
-
-xmobarRunExec :: ScreenId -> Rectangle -> Map.Map NamedLoggerId Posix.Fd -> IO ()
-xmobarRunExec screen sr fds = do
-  binDir <- dataDir <$> io getDirectories
-  rds <- mapM (fmap printFd . Posix.dup) fds
-  exec $ program (binDir ++ "/xmobar-run") [show screen, show sr, show rds]
-  where
-    printFd :: Posix.Fd -> String
-    printFd = printf "/dev/fd/%i" . fromEnum
-
--- | The main of the xmobar-run executable
-xmobarRunMain :: ScreenId -> Rectangle -> Map.Map NamedLoggerId FilePath -> IO ()
-xmobarRunMain screen sr rds = myXBConfig screen sr rds >>= XB.xmobar
-
-sbCleanupAll :: MonadIO m => m ()
-sbCleanupAll = io (readIORef sbarHackRef) >>= mapM_ (uncurry terminate) . (\xs -> [ (k,p) | (k,ps) <- xs, p <- ps ]) . Map.toList
-
-sbCleanup :: MonadIO m => ScreenId -> m ()
-sbCleanup sid = io (readIORef sbarHackRef) >>= mapM_ (terminate sid) . Map.findWithDefault [] sid
-
-terminate :: MonadIO m => ScreenId -> ProcessID -> m ()
-terminate sId pId = do
-  trace $ printf "[StatusBar %i] Terminating process (pid=%i)" (fromEnum sId) (fromEnum pId)
-  catchIO $ do
-    Posix.signalProcessGroup Posix.sigTERM pId
-    threadDelay 1000000 -- 1s
-    r <- Posix.getProcessStatus False False pId
-    case r of
-      Just {} -> trace $ printf "[StatusBar %i] Successfully terminated statusbar process (PID=%i)" (fromEnum sId) (fromEnum pId)
-      Nothing -> do
-        trace $ printf "[StatusBar %i] Terminating statusbar with TERM (try #2) (PID=%i)" (fromEnum sId) (fromEnum pId)
-        Posix.signalProcessGroup Posix.sigTERM pId
-        threadDelay 2000000 -- 2s
-        r <- Posix.getProcessStatus False False pId
-        case r of
-          Just {} -> trace $ printf "[StatusBar %i] Successfully terminated statusbar process (PID=%i)" (fromEnum sId) (fromEnum pId)
-          Nothing -> do
-            trace $ printf "[StatusBar %i] Terminating statusbar with KILL (PID=%i)" (fromEnum sId) (fromEnum pId)
-            Posix.signalProcessGroup Posix.sigKILL pId
-            threadDelay 500000 -- 0.5s
-            r <- Posix.getProcessStatus False False pId
-            case r of
-              Just {} -> trace $ printf "[StatusBar %i] Successfully terminated statusbar process with KILL (PID=%i)" (fromEnum sId) (fromEnum pId)
-              Nothing -> trace $ printf "[StatusBar %i] ERROR: failed to terminate statusbar process even with KILL! (PID=%i)" (fromEnum sId) (fromEnum pId)
-  io . atomicModifyIORef sbarHackRef $ \xs -> (Map.adjustWithKey (\_ -> L.delete pId) sId xs, ()) -- insertWith (++) screen [pID] xs, h) -- \xs -> ((screen, pID) : xs, h)
-
-  trace $ printf "[StatusBar %i] Cleaned up statusbar (PID=%i)" (fromEnum sId) (fromEnum pId)

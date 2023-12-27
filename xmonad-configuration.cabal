@@ -62,7 +62,7 @@ library
       XMonad.Util.NamedCommands.Orphans
   hs-source-dirs:
       lib
-  ghc-options: -pie -fPIC
+  ghc-options: -dynamic -pie -fPIC
   build-depends:
       X11
     , base
@@ -92,7 +92,7 @@ executable xmobar-run
   main-is: xmobar-run.hs
   other-modules:
       Paths_xmonad_configuration
-  ghc-options: -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"
+  ghc-options: -dynamic -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"
   build-depends:
       X11
     , base
@@ -121,7 +121,7 @@ executable xmobar-run
 
 executable xmonad-x86_64-linux
   main-is: xmonad.hs
-  ghc-options: -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"
+  ghc-options: -dynamic -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"
   build-depends:
       X11
     , base
