@@ -34,8 +34,8 @@ module MyTheme
   , xpConfigNoHist
   ) where
 
-import           XMonad                    hiding (Font, title)
 import qualified XMonad                    as X
+import           XMonad                    hiding (Font, title)
 
 import qualified XMonad.Actions.GridSelect as GS
 import qualified XMonad.Prompt             as XP
@@ -97,7 +97,7 @@ data FontStyle = Thin | Medium | Regular | Bold | BoldItalic | Light | LightItal
 showPangoFont :: Font -> String
 showPangoFont Font{..} = printf "%s %.2f" fontFamily (dSize fontSize) where
   dSize (Just (PointSize s)) = s
-  dSize _ = 8
+  dSize _                    = 8
 
 gsconfig1 :: GS.HasColorizer a => GS.GSConfig a
 gsconfig1 = def

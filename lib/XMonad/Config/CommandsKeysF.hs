@@ -32,10 +32,10 @@ module XMonad.Config.CommandsKeysF
 import           XMonad
 import           XMonad.Prelude
 import qualified XMonad.Prompt               as XP
-import qualified XMonad.Util.EZConfig        as EZ
 import qualified XMonad.Util.ExtensibleState as XS
-import           XMonad.Util.NamedActions    (NamedAction)
+import qualified XMonad.Util.EZConfig        as EZ
 import qualified XMonad.Util.NamedActions    as NA
+import           XMonad.Util.NamedActions    (NamedAction)
 
 import           XMonad.Util.NamedCommands
 
@@ -43,13 +43,13 @@ import           Control.Arrow               (second)
 import           Control.Monad.Fix
 import           Control.Monad.Free
 import           Data.Either                 (lefts)
+import qualified Data.Foldable               as Foldable (toList)
 import           Data.Map                    (Map)
 import qualified Data.Map                    as M
 import           Data.Tree
 import           Data.Unique
 import           Prelude
 import           Text.Printf
-import qualified Data.Foldable as Foldable (toList)
 
 -- $usage
 --      commands = modDef $ \modm -> do

@@ -48,8 +48,8 @@ module XMonad.Util.NamedCommands (
 
 import           XMonad
 import qualified XMonad.Prompt            as XP
-import           XMonad.Util.NamedActions (NamedAction)
 import qualified XMonad.Util.NamedActions as NA
+import           XMonad.Util.NamedActions (NamedAction)
 
 import           Control.Applicative
 import           Data.Data

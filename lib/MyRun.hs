@@ -77,22 +77,22 @@ import           XMonad.Util.Run          (seconds)
 
 import           Prelude
 
-import           Control.Concurrent (myThreadId, killThread, mkWeakThreadId)
+import           Control.Concurrent       (killThread, mkWeakThreadId, myThreadId)
 import qualified Control.Exception        as E
 import           Control.Monad
 import qualified Data.Map                 as M
 import           Data.String              (IsString)
+import           GHC.Weak                 (deRefWeak)
 import qualified System.IO                as IO
 import qualified System.Posix             as Posix
-import qualified System.Posix.Signals             as Signals
-import           GHC.Weak                 (deRefWeak)
+import qualified System.Posix.Signals     as Signals
 import qualified System.Process           as P
 import           System.Timeout           (timeout)
 import           Text.Printf              (printf)
 
 import           Codec.Binary.UTF8.String (encodeString)
 
-import RawFilePath
+import           RawFilePath
 
 -- X.Core.spawn          - void (spawnPID ...)
 -- X.Core.spawnPID       - xfork (executeFile ...)
@@ -175,12 +175,12 @@ exec cmd = cmdSpec cmd >>= exec' where
   exec' (P.RawCommand prog args) = Posix.executeFile (encodeString prog) True (map encodeString args) Nothing
 
 data TerminalCfg = TerminalCfg
-  { terminalName      :: String
-  , terminalGeometry  :: String
-  , terminalHold      :: Bool
-  , terminalSaveLines :: Int
+  { terminalName       :: String
+  , terminalGeometry   :: String
+  , terminalHold       :: Bool
+  , terminalSaveLines  :: Int
   , terminalInstanceId :: String
-  , terminalProg      :: Maybe ([String] -> P.CmdSpec)
+  , terminalProg       :: Maybe ([String] -> P.CmdSpec)
   }
 
 instance Default TerminalCfg where

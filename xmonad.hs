@@ -127,8 +127,8 @@ import           MyTheme
 import qualified MyXmobar
 import           Scratchpads
 import           SpawnOnByPPID
-import           XMonad.Config.CommandsKeysF
 import qualified XMonad.Config.CommandsKeysF           as CF
+import           XMonad.Config.CommandsKeysF
 import           XMonad.Hooks.EwmhDesktopsEx           (setEWMHDesktopGeometry)
 import           XMonad.Layout.Hinted
 import           XMonad.Prompt.Environ                 (environPrompt)
@@ -674,8 +674,8 @@ myShowKeys ts km = do
     $ Notify.body (Notify.styleTT $ Notify.str textKm) def
   trace $ "Keys: " ++ rsummary ts ++ "\n" ++ textKm
   where
-    rsummary []       = "<TOP>"
-    rsummary (k:xs)   = "<" ++ k ++ "> " ++ intercalate ", " xs
+    rsummary []     = "<TOP>"
+    rsummary (k:xs) = "<" ++ k ++ "> " ++ intercalate ", " xs
     textKm = unlines (showKm km)
 
 removeNoVisibleWS :: X ()
@@ -898,7 +898,7 @@ data WorkspaceCmd = WorkspaceOnScreen Focus PScreen.PhysicalScreen -- greedyview
 -- * Instance Boilerplate (Cmd)
 
 instance IsCmd ToggleHookCmd where
-  cmdEnum _ = [ToggleHookAllNew h | h <- ["keepfocus"]]
+  cmdEnum _ = [ToggleHookAllNew "keepfocus"]
   command (ToggleHookAllNew  hook) = ToggleHook.toggleHookAllNew hook ? printf "Toggle Hook %s (All)" hook
   command (ToggleHookNext hook)    = ToggleHook.toggleHookNext hook   ? printf "Toggle Hook %s (Next)" hook
 

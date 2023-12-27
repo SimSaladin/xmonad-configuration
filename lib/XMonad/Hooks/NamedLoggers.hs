@@ -20,23 +20,23 @@ module XMonad.Hooks.NamedLoggers
   , cleanupNamedLoggers
   ) where
 
-import XMonad
-import XMonad.Prelude
-import qualified Data.Map                             as Map
+import           Codec.Binary.UTF8.String    (encodeString)
+import qualified Control.Exception           as E
 import           Data.IORef
-import qualified System.Posix                         as Posix
-import qualified System.IO                            as IO
+import qualified Data.Map                    as Map
+import qualified Data.Set                    as Set
+import qualified System.IO                   as IO
+import           System.IO.Unsafe            (unsafePerformIO)
+import qualified System.Posix                as Posix
+import           System.Timeout              (timeout)
+import           XMonad
+import           XMonad.Hooks.StatusBar.PP   (PP(..), dynamicLogString, pad, shorten, wrap, xmobarRaw)
+import           XMonad.Prelude
+import qualified XMonad.Util.ExtensibleState as XS
 import           XMonad.Util.Loggers
-import qualified XMonad.Util.ExtensibleState          as XS
-import qualified Control.Exception                    as E
-import qualified Data.Set as Set
-import           XMonad.Hooks.StatusBar.PP            (PP(..), dynamicLogString, pad, shorten, wrap, xmobarRaw)
-import           System.IO.Unsafe                     (unsafePerformIO)
-import           System.Timeout                       (timeout)
 import           XMonad.Util.PureX
-import           Codec.Binary.UTF8.String             (encodeString)
 
-import MyRun (Handle)
+import           MyRun                       (Handle)
 
 data NamedLoggerId = NLogTitle | NLogLayout
   deriving (Show, Read, Eq, Ord, Enum, Bounded)

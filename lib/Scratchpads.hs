@@ -66,11 +66,11 @@ data Scratchpad = SP
   , spExclusive :: [String]
   }
 
-data Scratchpads = Scratchpads { xpads :: M.Map ScratchpadId Scratchpad } deriving Typeable
+newtype Scratchpads = Scratchpads { xpads :: M.Map ScratchpadId Scratchpad } deriving Typeable
 instance ExtensionClass Scratchpads where
   initialValue = Scratchpads mempty
 
-data ScratchpadDyn = ScratchpadDyn { dynWins :: M.Map ScratchpadId Window } deriving (Typeable, Read, Show)
+newtype ScratchpadDyn = ScratchpadDyn { dynWins :: M.Map ScratchpadId Window } deriving (Typeable, Read, Show)
 instance ExtensionClass ScratchpadDyn where
   initialValue = ScratchpadDyn mempty
   extensionType = PersistentExtension
@@ -130,7 +130,7 @@ toggleScratchpad' createIfMissing sp@SP{spQuery=q,spHook=h} = do
     s <- XS.gets xpads
     case M.lookup (spName sp) s of
       Nothing -> XS.modify $ \s -> s { xpads = M.alter (const $ Just sp) (spName sp) (xpads s) }
-      Just _ -> return ()
+      Just _  -> return ()
     toggle [x |x<-M.elems s, spName x `elem` spExclusive sp]
   where
     toggle excl = do
@@ -154,7 +154,7 @@ minimizeScratchpads xs = withWindowSet $ mapM_ hook . currentWindows
 
 scratchpadsStartupHook :: [Scratchpad] -> X ()
 scratchpadsStartupHook pads = do
-  mapM_ (flip dynPadSet' Nothing) pads
+  mapM_ (`dynPadSet'` Nothing) pads
 
 -- * ManageHooks
 

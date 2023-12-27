@@ -29,8 +29,8 @@ import           XMonad.Actions.PhysicalScreens     (PhysicalScreen(..))
 import           XMonad.Hooks.ManageDocks           (ToggleStruts(..))
 import qualified XMonad.Layout.BinarySpacePartition as BSP
 import qualified XMonad.Layout.GridVariants         as GV
-import           XMonad.Layout.Magnifier            (MagnifyMsg)
 import qualified XMonad.Layout.Magnifier            as Magnifier (MagnifyMsg(..))
+import           XMonad.Layout.Magnifier            (MagnifyMsg)
 import qualified XMonad.Layout.Mosaic               as Mosaic
 import           XMonad.Layout.MultiToggle          (Toggle(Toggle), Transformer)
 import qualified XMonad.Layout.WindowArranger       as WA

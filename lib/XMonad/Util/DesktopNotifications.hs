@@ -24,8 +24,8 @@
 
 module XMonad.Util.DesktopNotifications where
 
-import           XMonad                      (Default(..), ExtensionClass(..), MonadIO(liftIO), X)
 import qualified XMonad                      as X
+import           XMonad                      (Default(..), ExtensionClass(..), MonadIO(liftIO), X)
 import           XMonad.Prelude
 import qualified XMonad.StackSet             as W
 import qualified XMonad.Util.ExtensibleState as XS
@@ -46,8 +46,8 @@ import           Data.Word                   (Word32, Word8)
 import           Text.Printf                 (PrintfArg)
 
 import           System.Directory            (doesFileExist)
-import           System.IO                   (stderr)
 import qualified System.IO
+import           System.IO                   (stderr)
 import           System.Timeout              (timeout)
 
 import           DBus                        hiding (Type)

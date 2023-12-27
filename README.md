@@ -9,22 +9,31 @@ git clone github.com/SimSaladin/xmonad-configuration ~/.config/xmonad
 ./build
 ```
 
-## Compiling via Nix
-
-Uses IOHK's `haskell.nix` library:
+## Build
 
 ```bash
-nix-build -A xmonad
+nix build
 ```
 
 ## `pre-commit` checks
 
-Run `nix-shell` to run the `shellHook`, which:
+Uses [pre-commit-hooks.nix](https://github.com/cachix/pre-commit-hooks.nix).
+
+Enter dev shell with `nix shell`. What it does:
 
 1. installs `.git/hooks/pre-commit` and generate `.pre-commit-config.yaml`
 2. provides a `pre-commit` executable in the shell to run the checks
 
-Alternatively, you can build the attribute: `nix-build -A pre-commit-check`.
+Alternatively, you can build the attribute:
 
+```bash
+nix build .#checks.x86_64-linux.pre-commit-check
+```
 
-Uses [pre-commit-hooks.nix](https://github.com/cachix/pre-commit-hooks.nix).
+```bash
+# Run flake checks
+nix flake check
+
+# Check all files
+pre-commit run -a
+```
