@@ -49,6 +49,7 @@ import           Data.Tree
 import           Data.Unique
 import           Prelude
 import           Text.Printf
+import qualified Data.Foldable as Foldable (toList)
 
 -- $usage
 --      commands = modDef $ \modm -> do
@@ -261,7 +262,7 @@ infixr 1 >++>
 -- keysOf' "M-b S-" [("h",True),("l",False)] (\b -> windows (if b then focusUp else focusDown))
 -- @
 keysOf' :: (Traversable t, IsCmd b) => EZKey -> t (EZKey, a) -> (a -> b) -> Cmd l ()
-keysOf' mod' xs f = sequenceA_ [ key (mod' <> m) (f x) | (m,x) <- toList xs]
+keysOf' mod' xs f = sequenceA_ [ key (mod' <> m) (f x) | (m,x) <- Foldable.toList xs]
 
 -- | Like keysOf', but takes an extra parameter to use as the name.
 keysOf :: (Traversable t, PrintfArg a) => EZKey -> t (EZKey, a) -> String -> (a -> X ()) -> Cmd l ()
