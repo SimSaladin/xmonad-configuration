@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -39,16 +39,15 @@ import qualified XMonad.Util.ExtensibleState          as XS
 import           XMonad.Util.Loggers
 import           XMonad.Util.PureX
 
-import           Graphics.X11.Xinerama                (getScreenInfo)
-
 import           Codec.Binary.UTF8.String             (encodeString)
+import           Control.Concurrent                   (threadDelay)
 import qualified Control.Exception                    as E
 import           Control.Monad
-import qualified Data.List as L
-import qualified Data.Set as Set
 import           Data.IORef
+import qualified Data.List                            as L
 import qualified Data.Map                             as Map
 import           Data.Maybe
+import qualified Data.Set                             as Set
 import           Prelude
 import qualified System.IO                            as IO
 import           System.IO.Unsafe                     (unsafePerformIO)
@@ -60,26 +59,30 @@ import           MyRun
 import           MyTheme
 import           StatusBar.XMobar
 import qualified Xmobar                               as XB
-import XMonad.Hooks.NamedLoggers
+import           XMonad.Hooks.NamedLoggers
 
 -- * New stuff
 
 myStatusBars :: XConfig l -> XConfig l
-myStatusBars xc = SB.dynamicSBs mkStatusBarConfig xc { logHook = logHook xc <+> namedLoggersLogHook myFocusedPP }
+myStatusBars xc = SB.dynamicSBs mkStatusBarConfig xc
+  { logHook = logHook xc <+> namedLoggersLogHook myFocusedPP }
 
 mkStatusBarConfig :: ScreenId -> IO SB.StatusBarConfig
 mkStatusBarConfig screenId = do
-  hRef <- newIORef Nothing
+  trace (printf "[StatusBar %i] Starting" (fromEnum screenId))
+  hRef <- newIORef (Nothing :: Maybe Handle)
   return def
     { SB.sbStartupHook = io (readIORef hRef) >>= start hRef
     , SB.sbLogHook     = io (readIORef hRef) >>= (`whenJust` say hRef)
     , SB.sbCleanupHook = io (readIORef hRef) >>= dead hRef
     }
       where
-        start hRef Just{}  = trace (printf "error: status bar for screen=%i is still running!" (fromEnum screenId))
-        start hRef Nothing = io (myStatusBar screenId) >>= go
-          where go r@Just{} = io (writeIORef hRef r)
-                go Nothing  = trace (printf "Status bar for screen=%i was NOT started" (fromEnum screenId))
+        start hRef Just{}  = trace $ printf "[StatusBar %i] error: status bar is still running!" (fromEnum screenId)
+        start hRef Nothing = do
+          r <- io (myStatusBar screenId)
+          case r of
+            Just{}  -> io (writeIORef hRef r)
+            Nothing -> trace $ printf "[StatusBar %i] statusbar was NOT started!" (fromEnum screenId)
 
         say hRef h = do
           current <- curScreenId
@@ -318,24 +321,30 @@ sbarHackRef :: IORef (Map.Map ScreenId [ProcessID])
 sbarHackRef = unsafePerformIO (newIORef mempty)
 {-# NOINLINE sbarHackRef #-}
 
+-- | Create the status bar process for the screen id. Returns Nothing if it fails.
 myStatusBar :: ScreenId -> IO (Maybe Handle)
 myStatusBar screen@(S sid) = do
-  screenInfo <- E.bracket (openDisplay "") closeDisplay getScreenInfo
-  let r:rs = drop sid screenInfo -- TODO non-exhaustive pattern
-      rss  = take sid screenInfo
-  if any (r `containedIn`) (rs ++ rss)
-     then return Nothing
-     else fmap Just $ do
-       sb@(h,pID) <- myStatusBar' r
-       atomicModifyIORef sbarHackRef $ \xs -> (Map.insertWith (++) screen [pID] xs, ())
-       trace (printf "statusbar for screen=%i: logFd=%s pid=%i" (fromEnum sid) (show h) (fromEnum pID))
-       return h
+  mr <- getScreenRectangle screen
+  case mr of
+    Nothing -> return Nothing
+    Just r -> do
+      sb@(h, pID) <- myStatusBar' r
+      atomicModifyIORef sbarHackRef $ \xs -> (Map.insertWith (++) screen [pID] xs, ())
+      trace $ printf "[StatusBar %i] Spawned (logFd=%s, PID=%i, Rectangle=%s)" (fromEnum sid) (show h) (fromEnum pID) (show r)
+      return (Just h)
     where
       myStatusBar' :: Rectangle -> IO (Handle, ProcessID)
       myStatusBar' sr =
         withNamedLogInputs screen $ \fds -> do
-          trace $ printf "Spawning statusbar: screen=%i namedLoggers=%s" (fromEnum screen) (show fds)
+          trace $ printf "[StatusBar %i] Spawning (namedLoggers=%s)" (fromEnum screen) (show fds)
           spawnPipeIO $ xmobarRunExec screen sr fds
+
+getScreenRectangle :: ScreenId -> IO (Maybe Rectangle)
+getScreenRectangle (S sid) = do
+  screenInfo <- E.bracket (openDisplay "") closeDisplay getCleanedScreenInfo
+  case drop sid screenInfo of
+    r:_ -> return (Just r)
+    _   -> return Nothing
 
 xmobarRunExec :: ScreenId -> Rectangle -> Map.Map NamedLoggerId Posix.Fd -> IO ()
 xmobarRunExec screen sr fds = do
@@ -358,12 +367,28 @@ sbCleanup sid = io (readIORef sbarHackRef) >>= mapM_ (terminate sid) . Map.findW
 
 terminate :: MonadIO m => ScreenId -> ProcessID -> m ()
 terminate sId pId = do
-  trace $ printf "Terminating statusbar screen=%i PID=%i" (fromEnum sId) (fromEnum pId)
+  trace $ printf "[StatusBar %i] Terminating process (pid=%i)" (fromEnum sId) (fromEnum pId)
   catchIO $ do
-    void $ Posix.signalProcess Posix.sigTERM pId
-    r <- timeout 500000 $ Posix.getProcessStatus True False pId
+    Posix.signalProcessGroup Posix.sigTERM pId
+    threadDelay 1000000 -- 1s
+    r <- Posix.getProcessStatus False False pId
     case r of
-      Nothing -> trace $ printf "Terminating statusbar failed (timeout), PID=%i" (fromEnum pId)
-      _       -> trace $ printf "Successfully terminated statusbar process PID=%i" (fromEnum pId)
+      Just {} -> trace $ printf "[StatusBar %i] Successfully terminated statusbar process (PID=%i)" (fromEnum sId) (fromEnum pId)
+      Nothing -> do
+        trace $ printf "[StatusBar %i] Terminating statusbar with TERM (try #2) (PID=%i)" (fromEnum sId) (fromEnum pId)
+        Posix.signalProcessGroup Posix.sigTERM pId
+        threadDelay 2000000 -- 2s
+        r <- Posix.getProcessStatus False False pId
+        case r of
+          Just {} -> trace $ printf "[StatusBar %i] Successfully terminated statusbar process (PID=%i)" (fromEnum sId) (fromEnum pId)
+          Nothing -> do
+            trace $ printf "[StatusBar %i] Terminating statusbar with KILL (PID=%i)" (fromEnum sId) (fromEnum pId)
+            Posix.signalProcessGroup Posix.sigKILL pId
+            threadDelay 500000 -- 0.5s
+            r <- Posix.getProcessStatus False False pId
+            case r of
+              Just {} -> trace $ printf "[StatusBar %i] Successfully terminated statusbar process with KILL (PID=%i)" (fromEnum sId) (fromEnum pId)
+              Nothing -> trace $ printf "[StatusBar %i] ERROR: failed to terminate statusbar process even with KILL! (PID=%i)" (fromEnum sId) (fromEnum pId)
   io . atomicModifyIORef sbarHackRef $ \xs -> (Map.adjustWithKey (\_ -> L.delete pId) sId xs, ()) -- insertWith (++) screen [pID] xs, h) -- \xs -> ((screen, pID) : xs, h)
-  trace $ printf "Cleaned up statusbar screen=%i PID=%i" (fromEnum sId) (fromEnum pId)
+
+  trace $ printf "[StatusBar %i] Cleaned up statusbar (PID=%i)" (fromEnum sId) (fromEnum pId)
