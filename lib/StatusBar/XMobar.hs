@@ -305,14 +305,30 @@ renderBoxOptions opts = unwords $
 
 -- * Literals
 
--- | Spaces
-enspace, emspace, puncsp, thinsp, hairsp, numsp :: String
+-- | Em spaces
+-- Em space      - 1 em
+-- En space      - 1/2 em
+-- Third space   - 1/3 em (aka. thick space)
+-- Quarter space - 1/4 em
+-- Sixth space   - 1/6 em
+-- Thin space    - 1/8 em (~= six-per-em space)
+-- Hair space    - 1/24 em
+enspace, emspace, emsp13, emsp14, thinsp, hairsp :: String
 enspace = "\x2002"
 emspace = "\x2003"
-puncsp  = "\x2008"
+emsp13  = "\x2004"
+emsp14  = "\x2005"
 thinsp  = "\x2009"
 hairsp  = "\x200A"
-numsp   = "\x2007" -- same width as numerical digit
+
+-- | Figure space. In fonts with monospaced digits, equal to the width of one digit.
+numsp :: String
+numsp = "\x2007"
+
+-- | Punctuation space. As wide as the narrow punctuation in a font,
+-- i.e. the advance width of the period or comma.
+puncsp :: String
+puncsp = "\x2008"
 
 -- | Dashes
 figdash, endash, emdash, swungdash, oendash :: String

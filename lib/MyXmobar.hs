@@ -240,13 +240,13 @@ terminate sId pId = do
 -- * XMobar Config
 
 -- Fonts
-xbFontDefault, xbFontWqyMicroHei, xbFontTerminessNerd, xbFontNotoSymbols2, xbFontMono, xbFontMonoFull :: String -> String
-xbFontDefault       = xmobarFont 0 -- CJK
-xbFontWqyMicroHei   = xmobarFont 1 -- CJK
-xbFontTerminessNerd = xmobarFont 2 -- symbols
-xbFontNotoSymbols2  = xmobarFont 3 -- symbols
-xbFontMono          = xbFontDefault
-xbFontMonoFull      = xmobarFont 4 -- monospace, larger
+-- xbFontDefault, xbFontWqyMicroHei, xbFontTerminessNerd, xbFontNotoSymbols2, xbFontMono, xbFontMonoFull :: String -> String
+-- xbFontDefault       = xmobarFont 0 -- CJK
+-- xbFontWqyMicroHei   = xmobarFont 1 -- CJK
+-- xbFontTerminessNerd = xmobarFont 2 -- symbols
+-- xbFontNotoSymbols2  = xmobarFont 3 -- symbols
+-- xbFontMono          = xbFontDefault
+-- xbFontMonoFull      = xmobarFont 4 -- monospace, larger
 
 -- | Generate XMobar config
 myXBConfig :: ScreenId -> Rectangle -> Double -> Map.Map NamedLoggerId FilePath -> IO XB.Config
@@ -258,25 +258,22 @@ myXBConfig (S sid) sr dpi pipes = fromConfigB $
        , XB.allDesktops = False
        , XB.borderWidth = 0
        , XB.dpi = dpi
+       , XB.font = snd (head fonts)
+       , XB.additionalFonts = map snd (tail fonts)
+       , XB.textOffset = -1 -- negative to center vertically
        })
-  <> setFontsB
-      [ def { fontFamily = "NotoSans Nerd Font", {- "Noto Sans Mono", -} fontSize = Just (PointSize 7) } -- default 0
-      , def { fontFamily = "WenQuanYi Zen Hei",      fontSize = Just (PointSize 7) } -- CJK 1
-      , def { fontFamily = "Terminess Nerd Font Mono" {- "TerminessTTF Nerd Font" -}, fontSize = Just (PointSize 7) } -- symbols 2
-      , def { fontFamily = "Noto Sans Symbols2",     fontSize = Just (PointSize 7) } -- symbols 3
-      , def { fontFamily = "Noto Sans Mono",         fontSize = Just (PointSize 8) } -- monospace 4
-      ]
   <> pipeReaderB "xmonad" "/dev/fd/0"
   <> whenB (widthAtLeast 2500) (litB emspace <> mpdB mpdArgs 50)
   <> litB emspace <> bufferedPipeReaderB [ (time, False, fp) | (k, fp) <- Map.toList pipes, let time = myPipeTimeout k ]
   <> "}"
   <> "{"
+  -- <> litB (fn "noto-color-emoji" $ concatMap snd skyConditions)
   <> batteryB batteryArgs 100
   <> sepByB (litB enspace)
     [ litB symCpu <> multiCpuB multiCpuArgs 50
-    , topProcB topProcArgs 50
+    , topProcB (topProcArgs $ ifWiderThan 1920 2 1) 50
     , litB symMem <> memoryB memoryArgs 50
-    , topMemB topMemArgs 50
+    , topMemB (topMemArgs $ ifWiderThan 1920 2 1) 50
     , litB symNet <> dynnetworkB networkArgs 50
     , alsaB "default" "Master" volumeArgs
     , litB symKbd <> kbdAndLocks
@@ -285,28 +282,44 @@ myXBConfig (S sid) sr dpi pipes = fromConfigB $
     , litB symClock <> dateZoneB dateFmt "" "" 10
     ]
   where
+    fontSize = 7 :: Double
+
+    fonts :: [(String, String)]
+    fonts =
+     [ ("default", printf "NotoSans Nerd Font %.2f" fontSize)
+     , ("mono"   , printf "NotoMono Nerd Font %.2f" fontSize)
+     , ("tiny"   , printf "WenQuanYi Micro Hei %.2f" (fontSize * 0.9))
+     , ("cjk"    , printf "WenQuanYi Zen Hei %.2f" fontSize)
+     -- , ("mono"   , printf "Terminess Nerd Font Mono %.2f" (fontSize * 1.1))
+     , ("noto-color-emoji", printf "Noto Color Emoji %.2f" fontSize)
+     ]
+
+    -- font by custom key
+    fn :: String -> String -> String
+    fn x = xmobarFont (fromMaybe 0 (findIndex ((x ==) . fst) fonts))
+
+    ifWiderThan w wide narrow = if fi (rect_width sr) / (dpi / 96) > w then wide else narrow
     widthAtLeast w = return $ rect_width sr >= w
 
     myPipeTimeout k = fromMaybe (secs 15) $ lookup k [(NLogTitle, 0)]
-    secs n = n * 10
 
-    colLow    = colBase00 -- colBase01
-    colNormal = colGreen
-    colHigh   = colOrange
+    secs n = n * 10
 
     underline = box' def{ boxType = BBottom, boxColor = colBase01, boxMargin = [0,3,0,0] }
 
-    symCpu    = fg colBase1 "\xe266 " -- nf-fae-chip
-    symMem    = fg colBase1 "\xf035b " -- nf-md-memory
-    symNet    = fg colBase1 "\xf0c9d " -- nf-md-network_outline
-    symBTC    = fg colBase1 "\xf15a " -- nf-fa-bitcoin
-    symKbd    = fg colBase1 "\xf0313 " -- nf-md-keyboard_variant
-    symClock  = fg colBase1 "\xe641 " -- nf-seti-clock
+    symCpu    = "\xf4bc " -- nf-oct-cpu
+             -- "\xe266 " -- nf-fae-chip
+    -- symMem    = {- fg colBase1 -} "\xf035b " -- nf-md-memory
+    symMem    = {- fg colBase1 -} "\xe266 " -- nf-fae-chip
+    symNet    = {- fg colBase1 -} "\xf0c9d " -- nf-md-network_outline
+    symBTC    = {- fg colBase1 -} "\xf15a " -- nf-fa-bitcoin
+    symKbd    = {- fg colBase1 -} "\xf0313 " -- nf-md-keyboard_variant
+    symClock  = {- fg colBase1 -} "\xe641 " -- nf-seti-clock
     symVolOn  = "\xf057e " -- nf-md-volume_high
     symVolOff = "\xf0581 " -- nf-md-volume_off
-    symPlay   = "\xf040a " -- nf-md-play
-    symPause  = "\xf03e4 " -- nf-md-pause
-    symStop   = "\xf04db " -- nf-md-stop
+    symPlay   = "\xf040a" -- nf-md-play
+    symPause  = "\xf03e4" -- nf-md-pause
+    symStop   = "\xf04db" -- nf-md-stop
 
     kbdAndLocks = kbdB <> litB hairsp <> fgB colOrange locksB
 
@@ -318,112 +331,120 @@ myXBConfig (S sid) sr dpi pipes = fromConfigB $
           weekday  = fg colBase01 "%a"
           daymonth = fg colBase1 "%-d" <> "." <> fg colBase00 "%-m"
           hourmin  = fg colBase1 "%-H:%M"
-          seconds  = xbFontMono (":" <> fg colBase01 "%S")
-          zone     = xbFontMono (fg colBase01 "%Z")
+          seconds  = fn "mono" (":" <> fg colBase01 "%S")
+          zone     = fn "mono" (fg colBase01 "%Z")
 
-    weatherArgs station = def
-      { monTemplate  = sepByConcat puncsp [xbFontNotoSymbols2 "<skyConditionS>", station, xbFontMonoFull "<tempC>" <> "℃ ", "<rh>%", "<windKmh>" <> fg colBase01 "km/h"]
+    defArgs = def
+      { monLowColor    = colBlue
+      , monNormalColor = colYellow
+      , monHighColor   = colOrange
+      }
+
+    weatherArgs station = defArgs
+      { monTemplate  = sepByConcat puncsp
+          [ fn "noto-color-emoji" "<skyConditionS>"
+          , station
+          , fn "mono" "<tempC>" <> "℃ "
+          , "<rh>%"
+          , "<windKmh>" <> fg colBase01 (fn "tiny" "km/h")
+          ]
       , monHigh      = 20
       , monLow       = 5
-      , monHighColor = colOrange
-      , monLowColor  = colBlue
       }
+
     skyConditions =
-      [ ("clear", "🌣")
-      , ("sunny", "☀")
-      , ("mostly clear", "🌤")
-      , ("mostly sunny", "🌤")
-      , ("partly sunny", "⛅")
-      , ("fair", "🌕") -- other: 🌑
-      , ("cloudy","☁")
-      , ("overcast","☁")
-      , ("partly cloudy", "⛅")
-      , ("mostly cloudy", "🌧")
-      , ("considerable cloudiness", "⛈")
-      , ("", "🌡")
+      [ ("clear"                   , "\x2600") -- 0/8
+      , ("sunny"                   , "\x2600") -- 0/8
+      , ("mostly clear"            , "\x1F324") -- 1/8-2/8 cloud coverage
+      , ("mostly sunny"            , "\x1F324") -- 1/8-2/8 cloud coverage
+      , ("partly cloudy"           , "\x26C5")  -- 3/8-4/8
+      , ("partly sunny"            , "\x26C5")  -- 3/8-4/8
+      , ("mostly cloudy"           , "\x1F325")  -- 5/8-7/8
+      , ("considerable cloudiness" , "\x1F325")   -- 5/8-7/8
+      , ("cloudy"                  , "\x2601")  -- 8/8
+      , ("fair"                    , "🌕")      -- Less than 4/10 opaque clouds, no precipitation, no extremes of visibility/temperature/wind
+      , ("overcast"                , "\x1F327") -- rainy weather
+      , (""                        , "??")
+      -- "\x26C8" -- thunderstorm
       ]
 
-    networkArgs = def
-      { monTemplate    = sepByConcat puncsp [dev, tx, rx]
+    networkArgs = defArgs
+      { monTemplate    = fn "tiny" $ sepByConcat puncsp ["<dev>", "<tx>", "<rx>"]
       , monHigh        = 1024 * 1024 -- 1048576
       , monLow         = 128  * 1024 -- 131072
-      , monHighColor   = colOrange
-      , monNormalColor = colBase1
       , monLowColor    = colBase01
       , monSuffix      = True
-      } where
-        dev = xbFontWqyMicroHei "<dev>"
-        tx  = "<tx>"
-        rx  = "<rx>"
-
-    multiCpuArgs = def
-      { monTemplate    = xbFontMonoFull "<total>%"
-      , monLow         = 25
-      , monHigh        = 75
-      , monHighColor   = colOrange
-      , monNormalColor = colBase1
-      , monLowColor    = colBase01
       }
 
-    topProcArgs = def
-      { monTemplate    = sepByConcat puncsp $ map fmt1 [1..2]
+    multiCpuArgs = defArgs
+      { monTemplate    = fn "mono" "<total>%"
+      , monLow         = 25
+      , monHigh        = 75
+      }
+
+    topProcArgs numN = defArgs
+      { monTemplate    = fn "tiny" $ sepByConcat puncsp $ map fmt1 [1..numN]
       , monHigh        = 30 -- for cpu: activity-%, for mem: like in %topmem%
       , monLow         = 10
-      , monHighColor   = colOrange
-      , monNormalColor = colBase1
-      , monLowColor    = colBase01
       } where
         fmt1 :: Int -> String
-        fmt1 n = xbFontWqyMicroHei $ wrap hairsp thinsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<cpu%i>" n <> "%")
+        fmt1 n = printf "<name%i>" n <> hairsp <> fn "mono" (printf "<cpu%i>%%" n)
 
-    topMemArgs = def
-      { monTemplate    = sepByConcat puncsp $ map fmt1 [1..2]
-      , monHigh        = 25 -- percentages over total memory currently in use
-      , monLow         = 8
-      , monHighColor   = colOrange
-      , monNormalColor = colBase1
-      , monLowColor    = colBase01
+    topMemArgs numN = defArgs
+      { monTemplate    = fn "tiny" $ sepByConcat puncsp $ map fmt1 [1..numN]
+      , monHigh        = 35 -- percentages over total memory currently in use
+      , monLow         = 15
+      , monNormalColor = colBlue
+      , monHighColor   = colYellow
       } where
         fmt1 :: Int -> String
-        fmt1 n = xbFontWqyMicroHei $ wrap hairsp hairsp $ printf "<name%i>" n <> hairsp <> xbFontMono (printf "<mem%i>" n)
+        fmt1 n = printf "<name%i>" n <> hairsp <> fn "mono" (printf "<mem%i>" n)
 
-    memoryArgs = def
-      { monTemplate    = xbFontMonoFull "<usedratio>%"
+    memoryArgs = defArgs
+      { monTemplate    = fn "mono" "<usedratio>%"
       , monHigh        = 75
       , monLow         = 25
-      , monHighColor   = colOrange
-      , monNormalColor = colBase1
-      , monLowColor    = colBase01
+      --, monNormalColor = colBase1
+      --, monLowColor    = colBase01
       }
 
-    volumeArgs = def
-      { monTemplate    = "<status>" <> xbFontMonoFull ("<volume>" <> fg colBase01 "%")
+    volumeArgs = defArgs
+      { monTemplate    = "<status>" <> fn "mono" ("<volume>" <> fg colBase01 "%")
       , monLow         = 20
       , monHigh        = 75
-      , monHighColor   = colOrange
-      , monNormalColor = colBase1
-      , monLowColor    = colBase01
+      , monNormalColor = colCyan
       , monExtraArgs   = ["-C", colBase1, "-c", colRed, "-O", symVolOn, "-o", symVolOff]
       }
 
-    mpdArgs = def
-      { monTemplate      = sepByConcat thinsp [statei, artist <> fg colBase01 oendash <> title, album, flags]
+    mpdArgs = defArgs
+      { monTemplate = sepByConcat thinsp
+          [ "<statei>"
+          , flags
+          , artist <> fg colBase01 oendash <> title
+          , album
+          ]
       , monFieldWidthMax = 30
       , monFieldEllipsis = "…"
-      , monExtraArgs     = [ "-P", fg colGreen  symPlay , "-Z", fg colYellow symPause , "-S", fg colOrange symStop ]
+      , monExtraArgs     =
+        [ "-P", fg colGreen  symPlay
+        , "-Z", fg colYellow symPause
+        , "-S", fg colOrange symStop
+        ]
       } where
-          artist = fg colCyan $ xbFontWqyMicroHei  "<artist>"
-          title  = fg colBase1 $ xbFontWqyMicroHei  "<title>"
-          album  = fg colBase01 $ wrap "「" "」" $ fg colBlue $ xbFontWqyMicroHei "<album>"
-          flags  = fg colBase01 $ wrap "[" "]" $ fg colBase1 $ xbFontMono "<flags>"
-          statei = "<statei>"
+          artist = fn "tiny" $ fg colCyan "<artist>"
+          title  = fn "tiny" $ fg colBase1 "<title>"
+          album  = fg colBase01 $ wrap "「" "」" $ fg colBlue $ fn "tiny" "<album>"
+          flags  = fn "mono" $ fg colBase01 $ wrap "[" "]" $ fg colBase1 "<flags>"
 
-    batteryArgs = def
+    batteryArgs = defArgs
       { monTemplate  = "<acstatus><left>% " <> fg colCyan "<timeleft>"
       , monLow       = 15
       , monHigh      = 80
-      , monHighColor = colHigh
-      , monExtraArgs = ["-O", fg colGreen "AC" <> " ", "-i", "", "-o", ""]
+      , monExtraArgs =
+        [ "-O", fg colGreen "AC" <> " "
+        , "-i", ""
+        , "-o", ""
+        ]
       }
 
 -- * PP
