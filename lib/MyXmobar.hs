@@ -239,14 +239,23 @@ terminate sId pId = do
 
 -- * XMobar Config
 
--- Fonts
--- xbFontDefault, xbFontWqyMicroHei, xbFontTerminessNerd, xbFontNotoSymbols2, xbFontMono, xbFontMonoFull :: String -> String
--- xbFontDefault       = xmobarFont 0 -- CJK
--- xbFontWqyMicroHei   = xmobarFont 1 -- CJK
--- xbFontTerminessNerd = xmobarFont 2 -- symbols
--- xbFontNotoSymbols2  = xmobarFont 3 -- symbols
--- xbFontMono          = xbFontDefault
--- xbFontMonoFull      = xmobarFont 4 -- monospace, larger
+-- | Default font size (pointsize)
+myFontSize :: Double
+myFontSize = 7
+
+-- | XMobar fonts (Pango format).
+fonts :: [(String, String)]
+fonts =
+ [ ("default", printf "NotoSans Nerd Font %.2f" myFontSize)
+ , ("mono"   , printf "NotoMono Nerd Font %.2f" myFontSize)
+ , ("tiny"   , printf "WenQuanYi Micro Hei %.2f" (myFontSize * 0.9))
+ , ("cjk"    , printf "WenQuanYi Zen Hei %.2f" myFontSize)
+ , ("noto-color-emoji", printf "Noto Color Emoji %.2f" myFontSize)
+ ]
+
+-- | XMobar string with font by key.
+fn :: String -> String -> String
+fn x = xmobarFont (fromMaybe 0 (findIndex ((x ==) . fst) fonts))
 
 -- | Generate XMobar config
 myXBConfig :: ScreenId -> Rectangle -> Double -> Map.Map NamedLoggerId FilePath -> IO XB.Config
@@ -282,22 +291,6 @@ myXBConfig (S sid) sr dpi pipes = fromConfigB $
     , litB symClock <> dateZoneB dateFmt "" "" 10
     ]
   where
-    fontSize = 7 :: Double
-
-    fonts :: [(String, String)]
-    fonts =
-     [ ("default", printf "NotoSans Nerd Font %.2f" fontSize)
-     , ("mono"   , printf "NotoMono Nerd Font %.2f" fontSize)
-     , ("tiny"   , printf "WenQuanYi Micro Hei %.2f" (fontSize * 0.9))
-     , ("cjk"    , printf "WenQuanYi Zen Hei %.2f" fontSize)
-     -- , ("mono"   , printf "Terminess Nerd Font Mono %.2f" (fontSize * 1.1))
-     , ("noto-color-emoji", printf "Noto Color Emoji %.2f" fontSize)
-     ]
-
-    -- font by custom key
-    fn :: String -> String -> String
-    fn x = xmobarFont (fromMaybe 0 (findIndex ((x ==) . fst) fonts))
-
     ifWiderThan w wide narrow = if fi (rect_width sr) / (dpi / 96) > w then wide else narrow
     widthAtLeast w = return $ rect_width sr >= w
 
@@ -458,7 +451,7 @@ myFocusedPP = def
   , ppHiddenNoWindows = fg colBase01
   , ppSep             = " "
   , ppLayout          = last . words
-  , ppTitle           = xmobarFont 1 . pad . fg colBase1 . xmobarRaw . shorten 128
+  , ppTitle           = fn "tiny" . pad . fg colBase1 . xmobarRaw . shorten 32
   --, ppRename          = \s w -> maybe "" (\k -> fg colYellow $ k ++ ":") (Map.lookup (W.tag w) ppTagKeys) ++ s
   , ppOrder           = \(ws : layout : title : xs) -> ws : layout : xs
   }
