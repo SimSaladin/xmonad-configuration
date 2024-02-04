@@ -72,7 +72,7 @@ debugEventHook e = do
     ConfigureRequestEvent{..} | wEnabled ev_window       -> trace (show e) >> return (All True)
     ConfigureEvent{..}        | wEnabled ev_window       -> DebugEvents.debugEventsHook e
     MapRequestEvent{}                                    -> DebugEvents.debugEventsHook e
-    MapNotifyEvent{}                                     -> DebugEvents.debugEventsHook e
+    MapNotifyEvent{..}        | wEnabled ev_window       -> DebugEvents.debugEventsHook e
     UnmapEvent{..}            | wEnabled ev_window       -> DebugEvents.debugEventsHook e
     DestroyWindowEvent{..}    | wEnabled ev_window       -> DebugEvents.debugEventsHook e
     PropertyEvent{..}         | wEnabled ev_window       -> DebugEvents.debugEventsHook e
