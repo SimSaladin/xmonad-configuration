@@ -138,6 +138,7 @@ import qualified XMonad.Util.ExtensibleState           as XS
 import           XMonad.Util.Minimize
 import           XMonad.Util.NamedCommands
 import           XMonad.Util.NamedCommands.Orphans
+import           XMonad.Util.WindowState as WS
 
 -- * Feature flags
 
@@ -292,7 +293,7 @@ myLayout =
   . ManageDocks.avoidStruts -- NOTE: Apply avoidStruts late so that other modifiers aren't affected.
   . maximizeWithPadding 90 -- maximize overrides magnifier
   . magnify
-  . (if enableGNOME then id else mySpacing 1 2)
+  . mySpacing
   . windowNavigation -- apply on top of any modifiers that might modify placement of tiled windows
   . mkToggle1 (HINTSPLACEMENT (0.5, 0.5))
   . mkToggle1 REFLECTX -- NOTE: MIRROR with REFLECTX/Y is most intuitive when mirror goes first.
@@ -331,9 +332,11 @@ myLayout =
     -- since a recent change in xmonad core, without certain patch to xmonad-contrib (TODO: send upstream)
     windowNavigation = WindowNavigation.configurableNavigation (WindowNavigation.navigateColor colBase00)
 
-    mySpacing :: Integer -> Integer -> _
-    mySpacing sd wd = spacingRaw True (f sd) True (f wd) True
-      where f n = Border n n n n
+    mySpacing :: _
+    mySpacing = spacingRaw
+      True {- no borders when there's only one window -}
+      (Border 0 0 0 0) {- Screen border T B R L -} True {- Enable screen border? -}
+      (Border 1 2 1 2) {- Window border -}         True {- Enable window border? -}
 
 -- * Command bindings
 

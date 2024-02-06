@@ -1,6 +1,6 @@
 ---
 name: xmonad-configuration
-version: 0.17
+version: 0.18
 synopsis: My XMonad configuration
 description: |
   XMonad configuration with lots of custom things.
@@ -63,8 +63,8 @@ dependencies:
 - X11
 - filepath
 - xmobar         >= 0.36
-- xmonad         >= 0.17
-- xmonad-contrib >= 0.17
+- xmonad         >= 0.18
+- xmonad-contrib >= 0.18
 - xdg-desktop-entry
 - random
 - rawfilepath

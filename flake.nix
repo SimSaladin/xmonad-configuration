@@ -26,7 +26,8 @@
     };
 
     xmonad-contrib = {
-      url = "github:SimSaladin/xmonad-contrib?ref=develop-2";
+      url = "github:SimSaladin/xmonad-contrib?ref=2024-02-06-merged";
+      #url = "github:SimSaladin/xmonad-contrib?ref=develop-2";
       #url = "git+file:///home/sim/.config/xmonad/xmonad-contrib";
       inputs.flake-utils.follows = "flake-utils";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -46,7 +47,9 @@
     let
       pname = "xmonad-configuration";
 
-      compiler = "ghc963";
+      compiler =
+        "ghc963"; # Requires LLVM 10 <= 15
+       #"ghc981"; # Requires LLVM 11 <= 16
 
       hoverlay = final: prev: hself: hprev: {
 
@@ -90,9 +93,8 @@
       overlay = xmonad.lib.fromHOL hoverlay { };
 
       overlays = [
-        (final: prev: {
-          haskellPackages = prev.haskell.packages.${compiler};
-        })
+        # Set desired GHC
+        (final: prev: { haskellPackages = prev.haskell.packages.${compiler}; })
         xmonad.overlay
         xmonad-contrib.overlay
         xmobar.overlay
