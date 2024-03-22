@@ -434,6 +434,7 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-+"                     >+ volume 3
     "M--"                     >+ volume (-3)
     "M-#"                     >+ togglePad "ncmpcpp"
+    "M-@"                     >+ togglePad "taskwarrior-tui"
     "M-c m"                   >+ spawnOnceKitty "Pulsemixer" "pulsemixer" [] doCenterFloat
     "M-c n"                   >+ mpc ["next"]
     "M-c p"                   >+ mpc ["prev"]
@@ -559,8 +560,9 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
 myScratchpads :: [Scratchpad]
 myScratchpads =
     exclusive
-    [ mkPad "tmux-0"     mhd  (appName =? "tmux-0")  (spawnTermTmux def{terminalInstanceId = "pads", terminalName = "tmux-0"} (Just "0"))
-    , mkPad "ncmpcpp"    mhd  (appName =? "ncmpcpp") (spawnTerm def{terminalInstanceId = "pads", terminalName = "ncmpcpp"} "ncmpcpp")
+    [ mkPad "tmux-0"          mhd (appName =? "tmux-0")          (spawnTermTmux def{terminalInstanceId = "pads",            terminalName = "tmux-0"         } (Just "0"))
+    , mkPad "ncmpcpp"         mhd (appName =? "ncmpcpp")         (spawnTerm     def{terminalInstanceId = "pads",            terminalName = "ncmpcpp"        } "ncmpcpp")
+    , mkPad "taskwarrior-tui" mhd (appName =? "taskwarrior-tui") (spawnTerm     def{terminalInstanceId = "taskwarrior-tui", terminalName = "taskwarrior-tui"} "taskwarrior-tui")
     ] ++ [mkPadDyn "dynamic" xpConfig idHook]
   where
     mhd  = doRFRR 0.2 0.1 0.6 0.6
