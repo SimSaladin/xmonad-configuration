@@ -52,15 +52,7 @@
       # Max LLVM version depends on GHC version.
       llvmVersion = 15;
 
-      hoverlay = _final: _prev: hself: hprev: {
-
-        #mtl = hprev.mtl_2_3_1;
-
-        ConfigFile = final.haskell.lib.overrideCabal hprev.ConfigFile {
-          jailbreak = true;
-          #  editedCabalFile = null;
-          #  revision = null;
-        };
+      hoverlay = final: _prev: hself: hprev: {
 
         # need >=1.1.0 for GHC 9.6
         #rawfilepath = final.haskell.lib.overrideCabal hprev.rawfilepath rec {
@@ -100,7 +92,7 @@
       overlay = xmonad.lib.fromHOL hoverlay { };
 
       overlays = [
-        (final: prev: {
+        (_final: prev: {
           haskellPackages = prev.haskell.packages.${ghcVersion};
         })
         xmonad.overlay
