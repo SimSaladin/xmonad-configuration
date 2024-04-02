@@ -120,7 +120,7 @@ import qualified System.Posix                          as Posix
 import           Text.Printf                           (printf)
 import           Text.Read                             (readMaybe)
 
-import           DesktopEntries
+--import           DesktopEntries
 import qualified MyDebug
 import           MyRun
 import           MyTheme
@@ -180,9 +180,6 @@ myConfig =
   , rootMask           = rootMask def .|. focusChangeMask -- default: substructureRedirectMask .|. substructureNotifyMask .|. enterWindowMask .|. leaveWindowMask .|. structureNotifyMask .|. buttonPressMask
   , handleEventHook    = myRestartEventHook <> handleEventHook def
   , manageHook         = myManageHook
-                          <+> ToggleHook.toggleHook "keepfocus" (InsertPosition.insertPosition InsertPosition.Above InsertPosition.Older) -- default: Above Never
-                          <+> SpawnOn.manageSpawn
-                          <+> FloatNext.floatNextHook
   , layoutHook         = myLayout
   , handleExtraArgs    = myExtraArgs
   }
@@ -258,17 +255,25 @@ myManageHook = composeOne
   , className =? "Xmag"            -?> doSideFloat NC
   , className =? "Nvidia-settings" -?> doCenterFloat
   , className =? "zoom" <&&> title /=? "Zoom Meeting" -?> doFloat
-  , isDialog                       -?> placeHook (underMouse (0.7,0.7)) <+> doFloat
+  , isModal -?> idHook -- doCenterFloat
+  , isDialog -?> placeHook (underMouse (0.7,0.7)) <+> doFloat
   , isFloating =? False <&&> anyWindowCurWS (isFullscreen <&&> isFloating) -?> doFloat
   , isFloating =? True -?> doFloat
   , definiteToMaybe $ do
       minimized <- isMinimized
       trace $ "managehook: default placement (minimized: " ++ show minimized ++ ")"
       smartPlaceHook (30,30,30,30) (0.5,0.5)
-  ] where
+  ]
+  <+> ToggleHook.toggleHook "keepfocus" (InsertPosition.insertPosition InsertPosition.Above InsertPosition.Older) -- default: Above Never
+  <+> SpawnOn.manageSpawn
+  <+> FloatNext.floatNextHook
+    where
     definiteToMaybe = fmap Just -- inverse of X.H.ManageHelpers.maybeToDefinite
     smartPlaceHook gaps pos = placeHook (withGaps gaps (smart pos))
     anyWindowCurWS f = liftX $ or <$> (getStack >>= mapM (runQuery f) . W.integrate')
+
+    -- matches e.g. pinentry-qt windows
+    isModal = isInProperty "_NET_WM_STATE" "_NET_WM_STATE_MODAL"
 
 myLayout :: _ Window
 myLayout =
@@ -426,9 +431,10 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-r C-p" >+ XP.Pass.passOTPPrompt xpConfig       ? "Pass OTP (Prompt)"
     "M-r C-u" >+ XP.Pass.passPromptWith "show-field --clip username" xpConfig ? "Pass username (Prompt)"
     "M-r q"   >+ XP.QB.qutebrowserP xpConfigNoHist "qutebrowser" ?+ XP.QB.qutebrowser ? "Prompt: qutebrowser"
-    "M-r d"   >+ desktopEntryPrompt xpConfig [] ? "Desktop Entry Launch Prompt"
     "M-r s"   >+ inputPromptWithCompl xpConfig "scratchpad" (scratchpadCompl xpConfig myScratchpads) ?+ getAction . togglePad ? "Prompt: pad"
-    "M-r u"   >+ inputPromptWithHistCompl xpConfig "browser-app" ?+ (\s -> launchDesktopEntry "chrome-app" [s]) ? "Chrome App"
+    -- TODO DesktopEntry module not compiling
+    -- "M-r d"   >+ desktopEntryPrompt xpConfig [] ? "Desktop Entry Launch Prompt"
+    -- "M-r u"   >+ inputPromptWithHistCompl xpConfig "browser-app" ?+ (\s -> launchDesktopEntry "chrome-app" [s]) ? "Chrome App"
 
   group "Media" $ do
     "M-+"                     >+ volume 3
@@ -773,7 +779,7 @@ spawnPrompt :: XP.XPConfig -> String -> (String -> X ()) -> X ()
 spawnPrompt xpconfig name go = do
   cmds <- io XP.Shell.getCommands
   let cfShell = XP.Shell.getShellCompl cmds (XP.searchPredicate xpconfig)
-  cfHist <- XP.historyCompletionP (== name ++ ": ")
+  cfHist <- XP.historyCompletionP xpconfig (== name ++ ": ")
   XP.mkXPrompt (SpawnPrompt name) xpconfig (\s -> liftA2 (++) (cfHist s) (cfShell s)) go
 
 -- ** Window Prompts
@@ -795,7 +801,7 @@ windowPromptWithMinimized xpconfig =
 
 inputPromptWithHistCompl :: XP.XPConfig -> String -> X (Maybe String)
 inputPromptWithHistCompl xpc name =
-  XP.Input.inputPromptWithCompl xpc name =<< XP.historyCompletionP (== name ++ ": ")
+  XP.Input.inputPromptWithCompl xpc name =<< XP.historyCompletionP xpc (== name ++ ": ")
 
 
 -- * Command Groups as Types

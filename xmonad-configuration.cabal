@@ -1,6 +1,6 @@
-cabal-version: 1.18
+cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.35.2.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -41,7 +41,6 @@ flag via-llvm
 
 library
   exposed-modules:
-      DesktopEntries
       Hacks
       MyDebug
       MyRun
@@ -60,6 +59,10 @@ library
       XMonad.Util.DesktopNotifications
       XMonad.Util.NamedCommands
       XMonad.Util.NamedCommands.Orphans
+  other-modules:
+      Paths_xmonad_configuration
+  autogen-modules:
+      Paths_xmonad_configuration
   hs-source-dirs:
       lib
   ghc-options: -pie -fPIC
@@ -78,7 +81,6 @@ library
     , text
     , unix
     , utf8-string
-    , xdg-desktop-entry
     , xmobar >=0.36
     , xmonad >=0.17
     , xmonad-contrib >=0.17
@@ -90,7 +92,39 @@ library
 
 executable xmobar-run
   main-is: xmobar-run.hs
+  ghc-options: -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"
+  build-depends:
+      X11
+    , base
+    , containers
+    , dbus >=1.2.24
+    , directory
+    , filepath
+    , free
+    , multimap
+    , process
+    , random
+    , rawfilepath
+    , text
+    , unix
+    , utf8-string
+    , xmobar >=0.36
+    , xmonad >=0.17
+    , xmonad-configuration
+    , xmonad-contrib >=0.17
+  default-language: Haskell2010
+  if flag(optimize)
+    ghc-options: -O2 -funbox-strict-fields
+  else
+    ghc-options: -O0
+  if flag(via-llvm)
+    ghc-options: -fllvm
+
+executable xmonad-x86_64-linux
+  main-is: xmonad.hs
   other-modules:
+      Paths_xmonad_configuration
+  autogen-modules:
       Paths_xmonad_configuration
   ghc-options: -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"
   build-depends:
@@ -108,36 +142,6 @@ executable xmobar-run
     , text
     , unix
     , utf8-string
-    , xdg-desktop-entry
-    , xmobar >=0.36
-    , xmonad >=0.17
-    , xmonad-configuration
-    , xmonad-contrib >=0.17
-  default-language: Haskell2010
-  if flag(optimize)
-    ghc-options: -O2 -funbox-strict-fields
-  else
-    ghc-options: -O0
-
-executable xmonad-x86_64-linux
-  main-is: xmonad.hs
-  ghc-options: -pie -fPIC -threaded -rtsopts "-with-rtsopts=-maxN4 -qn2 -A8M -K64M -M1G -kc8k"
-  build-depends:
-      X11
-    , base
-    , containers
-    , dbus >=1.2.24
-    , directory
-    , filepath
-    , free
-    , multimap
-    , process
-    , random
-    , rawfilepath
-    , text
-    , unix
-    , utf8-string
-    , xdg-desktop-entry
     , xmobar >=0.36
     , xmonad >=0.17
     , xmonad-configuration
