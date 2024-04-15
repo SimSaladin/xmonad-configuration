@@ -120,7 +120,7 @@ import qualified System.Posix                          as Posix
 import           Text.Printf                           (printf)
 import           Text.Read                             (readMaybe)
 
---import           DesktopEntries
+import           DesktopEntries
 import qualified MyDebug
 import           MyRun
 import           MyTheme
@@ -153,10 +153,10 @@ myConfig =
   -- . myWallpapers
   . applyC myFullscreen
   . applyC EWMH.ewmh
+  . applyC Notify.desktopNotifications
   . applyC (\xc -> xc
       { startupHook =
               startupHook xc
-              <+> Notify.startupHook
               <+> setEWMHDesktopGeometry
               <+> scratchpadsStartupHook myScratchpads
       , handleEventHook =
@@ -214,7 +214,9 @@ myConfig =
       | 1:v1:v2:_ <- vs = do
         a' <- getAtom "_NET_WM_STATE"
         v' <- getAtom "_NET_WM_STATE_ABOVE"
-        when (a == a' && v' == fromIntegral v1) $ XMonad.Actions.Minimize.maximizeWindow w
+        when (a == a' && v' == fromIntegral v1) $ do
+          XMonad.Actions.Minimize.maximizeWindow w
+          trace "Maximized window"
         return (All True)
     removeMinimizedState _ = return (All True)
 
@@ -267,6 +269,7 @@ myManageHook = composeOne
   <+> ToggleHook.toggleHook "keepfocus" (InsertPosition.insertPosition InsertPosition.Above InsertPosition.Older) -- default: Above Never
   <+> SpawnOn.manageSpawn
   <+> FloatNext.floatNextHook
+  <+> (isStaysOnTop --> pushToTop)
     where
     definiteToMaybe = fmap Just -- inverse of X.H.ManageHelpers.maybeToDefinite
     smartPlaceHook gaps pos = placeHook (withGaps gaps (smart pos))
@@ -274,6 +277,10 @@ myManageHook = composeOne
 
     -- matches e.g. pinentry-qt windows
     isModal = isInProperty "_NET_WM_STATE" "_NET_WM_STATE_MODAL"
+    isStaysOnTop = isInProperty "_NET_WM_STATE" "_NET_WM_STATE_STAYS_ON_TOP"
+    pushToTop = ask >>= \w -> do
+      liftX (trace "Push to top")
+      doF W.shiftMaster --  . W.insertUp w . W.delete' w)
 
 myLayout :: _ Window
 myLayout =
@@ -432,9 +439,8 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-r C-u" >+ XP.Pass.passPromptWith "show-field --clip username" xpConfig ? "Pass username (Prompt)"
     "M-r q"   >+ XP.QB.qutebrowserP xpConfigNoHist "qutebrowser" ?+ XP.QB.qutebrowser ? "Prompt: qutebrowser"
     "M-r s"   >+ inputPromptWithCompl xpConfig "scratchpad" (scratchpadCompl xpConfig myScratchpads) ?+ getAction . togglePad ? "Prompt: pad"
-    -- TODO DesktopEntry module not compiling
-    -- "M-r d"   >+ desktopEntryPrompt xpConfig [] ? "Desktop Entry Launch Prompt"
-    -- "M-r u"   >+ inputPromptWithHistCompl xpConfig "browser-app" ?+ (\s -> launchDesktopEntry "chrome-app" [s]) ? "Chrome App"
+    "M-r d"   >+ desktopEntryPrompt xpConfig [] ? "Desktop Entry Launch Prompt"
+    "M-r u"   >+ inputPromptWithHistCompl xpConfig "browser-app" ?+ (\s -> launchDesktopEntry "chrome-app" [s]) ? "Chrome App"
 
   group "Media" $ do
     "M-+"                     >+ volume 3
@@ -953,8 +959,8 @@ instance IsCmd WindowCmd where
   command FocusDown                 = BW.focusDown            ? "Focus down (BoringWindows)"
   command FocusUrgent               = focusUrgent             ? "Focus urgent window"
   command SwapMaster                = windows W.swapMaster    ? "Swap to master"
-  command SwapUp                    = windows W.swapUp        ? "Swap up"
-  command SwapDown                  = windows W.swapDown      ? "Swap down"
+  command SwapUp                    = BW.swapUp               ? "Swap up"
+  command SwapDown                  = BW.swapDown             ? "Swap down"
   command RotSlavesDown             = RotSlaves.rotSlavesDown ? "Rotate slaves down"
   command RotSlavesUp               = RotSlaves.rotSlavesUp   ? "Rotate slaves up"
   command RotAllDown                = RotSlaves.rotAllDown    ? "Rotate down"
@@ -993,16 +999,6 @@ saveWorkspaces = do
   let names = [ W.tag t | t <- tags]
   file <- wsFile
   io $ writeFile file (show names)
-
-  dir <- cacheDir <$> io getDirectories
-  let statefile = dir </> "extState"
-  extst <- gets (fmap f . extensibleState)
-  io $ writeFile statefile (show extst)
-    where
-      f :: Either String StateExtension -> (String, String)
-      f x@(Left s)                        = (show (typeOf x), s)
-      f x@(Right StateExtension{})        = (show (typeOf x), "n/a")
-      f x@(Right (PersistentExtension a)) = (show (typeOf x), show a)
 
 -- * Configuration helpers
 

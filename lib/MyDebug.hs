@@ -81,9 +81,12 @@ debugEventHook e = do
     ClientMessageEvent{..}    | wEnabled ev_window       -> DebugEvents.debugEventsHook e
     ClientMessageEvent{ev_message_type = a, ev_data = vs} | (s:v1:v2:vals) <- vs    -> do
       a' <- getAtom "_NET_WM_STATE"
+      a_cs <- getAtom "WM_CHANGE_STATE"
+      when (a == a_cs) $ void $ DebugEvents.debugEventsHook e
       when (a == a') $ do
-        xs <- mapM dumpAtom [v1,v2]
-        trace $ "CLIENT MESSAGE _NET_WM_STATE: " ++ show s ++ " " ++ show xs ++ " -> " ++ show vals
+        x1 <- dumpAtom v1
+        x2 <- dumpAtom v2
+        trace $ "CLIENT MESSAGE: type=_NET_WM_STATE, data(0)=" ++ show s ++ ", data(1)=" ++ show x1 ++ ", data(2)=" ++ show x2 ++ ", data(3-N)=" ++ show vals
       return (All True)
     RRScreenChangeNotifyEvent{..} -> trace (show e) >> return (All True)
     _                                                    -> return (All True)
@@ -92,6 +95,7 @@ dumpAtom :: Integral a => a -> X String
 dumpAtom i = atomName $ fromIntegral i
 
 atomName :: Word64 -> X String
+atomName 0 = pure "0"
 atomName a =  withDisplay $ \d ->
   io $ fromMaybe ("(unknown atom " ++ show a ++ ")") <$> getAtomName d a
 

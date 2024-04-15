@@ -2,7 +2,7 @@
 spec-version: 0.36.0
 
 name: xmonad-configuration
-version: 0.17
+version: 0.18
 synopsis: My XMonad configuration
 description: |
   XMonad configuration with lots of custom things.
@@ -71,7 +71,7 @@ dependencies:
   - xmobar         >= 0.36
   - xmonad         >= 0.17
   - xmonad-contrib >= 0.17
-  #- xdg-desktop-entry
+  - xdg-desktop-entry
   - random
   - rawfilepath
 

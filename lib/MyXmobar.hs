@@ -267,8 +267,8 @@ myXBConfig (S sid) sr dpi pipes = fromConfigB $
        , XB.allDesktops = False
        , XB.borderWidth = 0
        , XB.dpi = dpi
-       , XB.font = snd (head fonts)
-       , XB.additionalFonts = map snd (tail fonts)
+       , XB.font = snd mainFont
+       , XB.additionalFonts = map snd altFonts
        , XB.textOffset = -1 -- negative to center vertically
        })
   <> pipeReaderB "xmonad" "/dev/fd/0"
@@ -291,6 +291,7 @@ myXBConfig (S sid) sr dpi pipes = fromConfigB $
     , litB symClock <> dateZoneB dateFmt "" "" 10
     ]
   where
+    mainFont : altFonts = fonts
     ifWiderThan w wide narrow = if fi (rect_width sr) / (dpi / 96) > w then wide else narrow
     widthAtLeast w = return $ rect_width sr >= w
 

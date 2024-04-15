@@ -45,53 +45,30 @@
   outputs = { self, nixpkgs, pre-commit-hooks, flake-utils, git-ignore-nix, xmonad, xmonad-contrib, xmobar }:
     let
       pname = "xmonad-configuration";
-
-      #ghcVersion = "ghc963";
       ghcVersion = "ghc982";
-
-      # Max LLVM version depends on GHC version.
-      llvmVersion = 15;
-
-      hoverlay = final: _prev: hself: hprev: {
-
-        # need >=1.1.0 for GHC 9.6
-        #rawfilepath = final.haskell.lib.overrideCabal hprev.rawfilepath rec {
-        #  version = "1.1.0";
-        #  editedCabalFile = null;
-        #  revision = null;
-        #  sha256 = "sha256-DFXsXPVciYadZ5wBlF4F0GvM0h0J2qEdhg5OpIld9xc=";
-        #  src = final.fetchurl {
-        #    url = "mirror://hackage/rawfilepath-${version}.tar.gz";
-        #    sha256 = "sha256-N9ORojJmWSi1m1P7/aDx6yJo1DAzJwTHXvdht+/FSiI=";
-        #  };
-        #};
-
-        ${pname} = hself.callCabal2nix "${pname}" (git-ignore-nix.lib.gitignoreSource ./.) {
-          #alsa-plugins' = alsa-plugins.override { libjack2 = false; };
-          mkDerivation = args: hprev.mkDerivation (args // {
-            configureFlags = [
-              "-foptimize"
-              "-fvia-llvm"
-            ];
-            enableLibraryProfiling = false;
-            enableSharedExecutables = true;
-            executableToolDepends = [ final.makeWrapper final."llvmPackages_${toString llvmVersion}".llvm ];
-
-            # Fix alsa-plugins. There's a patch in nixpkgs#alsa-lib that adds support for the ALSA_PLUGIN_DIR variable.
-            # We need to set it at runtime. Also, note that the alsa-plugins-wrapper script uses the wrong
-            # variable name (it's broken).
-            #
-            # https://github.com/NixOS/nixpkgs/issues/6860
-            #postFixup = ''
-            #  wrapProgram $out/bin/xmonad* --set ALSA_PLUGIN_DIR ${final.alsa-plugins}/lib/alsa-lib
-            #'';
-          });
+      llvmVersion = 15; # Max LLVM version depends on GHC version.
+      hoverlay = final: _prev: hself: hprev:
+        {
+          ${pname} = hself.callCabal2nixWithOptions pname (git-ignore-nix.lib.gitignoreSource ./.) "--hpack" {
+            mkDerivation = args: hprev.mkDerivation (args // {
+              enableLibraryProfiling = false;
+              enableSharedExecutables = true;
+              buildTools = args.buildTools or [ ] ++ [ final."llvmPackages_${toString llvmVersion}".llvm ];
+            });
+          };
+          # https://github.com/jgoerzen/configfile/pull/12
+          ConfigFile = hself.callCabal2nix "ConfigFile"
+            (final.fetchFromGitHub {
+              owner = "rvl";
+              repo = "configfile";
+              rev = "83ee30b43f74d2b6781269072cf5ed0f0e00012f";
+              hash = "sha256-RfL6a5JdWhf2nrBaWN/7GSfHgQXJlpyBArNyLUvdq4s=";
+            })
+            { };
         };
-      };
-
       overlay = xmonad.lib.fromHOL hoverlay { };
-
       overlays = [
+        # Need to use/set the haskellPackages attribute for the xmobar overlay...
         (_final: prev: {
           haskellPackages = prev.haskell.packages.${ghcVersion};
         })
@@ -104,18 +81,24 @@
     flake-utils.lib.eachSystem [ "x86_64-linux" ]
       (system:
         let
-          pkgs = import nixpkgs {
-            inherit system overlays;
-          };
+          lib = nixpkgs.lib;
+          pkgs = import nixpkgs { inherit system overlays; };
           hpkg = pkgs.haskellPackages;
         in
         {
-          packages = with pkgs.haskell.lib.compose; rec {
-            default = linkWithGold (enableCabalFlag "via-llvm" (enableCabalFlag "optimize" (dontHaddock hpkg.${pname})));
-            "${pname}" = default;
-            "${pname}-fast" = linkWithGold (dontHaddock (disableOptimization hpkg.${pname}));
-            # with haddocks
-            "${pname}-full" = linkWithGold hpkg.${pname};
+          packages = with pkgs.haskell.lib.compose; {
+            default = self.packages.${pname};
+            ${pname} = lib.pipe hpkg.${pname} [
+              dontHaddock
+              (enableCabalFlag "via-llvm")
+              (enableCabalFlag "optimize")
+              linkWithGold
+            ];
+            "${pname}-fast" = lib.pipe hpkg.${pname} [
+              dontHaddock
+              disableOptimization
+              linkWithGold
+            ];
           };
 
           checks = {
@@ -137,19 +120,18 @@
               nativeBuildInputs = [ hpkg.hpack ];
             };
             default = hpkg.shellFor {
-              packages = p: [ p.hpack p.${pname} ];
-              #nativeBuildInputs = [ hpkg.cabal-install hpkg.ghcid ];
+              packages = p: [ p.${pname} ];
+              nativeBuildInputs = with hpkg; [ cabal-install hpack ];
               #withHoogle = true;
               inherit (self.checks.${system}.pre-commit-check) shellHook;
             };
 
-            pre-commit-check = nixpkgs.legacyPackages.${system}.mkShellNoCC {
+            pre-commit-check = pkgs.mkShellNoCC {
               inherit (self.checks.${system}.pre-commit-check) shellHook;
             };
           };
         }
       ) // {
       overlays.default = overlay;
-      # inherit overlay overlays;
     };
 }

@@ -5,7 +5,7 @@ cabal-version: 2.0
 -- see: https://github.com/sol/hpack
 
 name:           xmonad-configuration
-version:        0.17
+version:        0.18
 synopsis:       My XMonad configuration
 description:    XMonad configuration with lots of custom things.
 category:       System
@@ -41,6 +41,10 @@ flag via-llvm
 
 library
   exposed-modules:
+      DesktopEntries
+      DesktopNotifications.Client
+      DesktopNotifications.Markup
+      DesktopNotifications.Notifications
       Hacks
       MyDebug
       MyRun
@@ -81,6 +85,7 @@ library
     , text
     , unix
     , utf8-string
+    , xdg-desktop-entry
     , xmobar >=0.36
     , xmonad >=0.17
     , xmonad-contrib >=0.17
@@ -108,6 +113,7 @@ executable xmobar-run
     , text
     , unix
     , utf8-string
+    , xdg-desktop-entry
     , xmobar >=0.36
     , xmonad >=0.17
     , xmonad-configuration
@@ -142,6 +148,7 @@ executable xmonad-x86_64-linux
     , text
     , unix
     , utf8-string
+    , xdg-desktop-entry
     , xmobar >=0.36
     , xmonad >=0.17
     , xmonad-configuration
