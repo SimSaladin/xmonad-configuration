@@ -55,12 +55,11 @@ import           XMonad.Config.Solarized
 sepByConcat :: (Monoid a, Foldable t) => a -> t a -> a
 sepByConcat a = mconcat . Data.List.intersperse a . toList
 
-terminus           = def { fontFamily = "xos4 Terminus" }
-terminessPowerline = def { fontFamily = "xos4 Terminess Powerline" }
-terminessNerd      = def { fontFamily = "TerminessTTF Nerd Font" }
+terminessPowerline = def { fontFamily = "Terminess Powerline" }
+terminessNerd      = def { fontFamily = "Terminess Nerd Font" }
 wqyMicroHei size   = def { fontFamily = "WenQuanYi Micro Hei", fontSize = Just (PixelSize size) }
-notoSansLight      = def { fontFamily = "Noto Sans Light", fontSize = Just (PointSize 8) }
-notoMono           = def { fontFamily = "Noto Sans Mono", fontSize = Just (PointSize 8) }
+notoSansLight      = def { fontFamily = "NotoSansM NFM Light", fontSize = Just (PointSize 8) }
+notoMono           = def { fontFamily = "NotoSansM NFM", fontSize = Just (PointSize 8) }
 
 font, bfont :: Int -> Font
 font size = sel { fontSize = Just (PixelSize size) } where
