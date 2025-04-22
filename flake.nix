@@ -21,6 +21,7 @@
       url = "github:xmonad/xmonad";
       inputs.flake-utils.follows = "flake-utils";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.unstable.follows = "nixpkgs";
       inputs.git-ignore-nix.follows = "git-ignore-nix";
     };
 
@@ -71,6 +72,18 @@
             src = xmobar;
             version = "dev-${xmobar.shortRev}";
           };
+
+          # Patch null pointer exception causing segfault when font cannot be
+          # loaded
+          X11-xft = hprev.X11-xft.overrideAttrs (oa: {
+            patches = oa.patches or [ ] ++ [
+              (final.fetchpatch {
+                url = "https://github.com/xmonad/X11-xft/pull/21.diff";
+                hash = "sha256-dE9L+J0UQGRkaqW5VCU3GjxaEx98LfG6XSDzoXVizEY=";
+                postFetch = "sed -i -e '/X11-xft.cabal/,/author:/ d' $out";
+              })
+            ];
+          });
 
           #pango = final.haskell.lib.overrideSrc hprev.pango rec {
           #  src = final.fetchurl {
@@ -214,7 +227,7 @@
       };
       overlays = [
         # build cabal2nix with a different package set as suggested by https://github.com/NixOS/nixpkgs/issues/83098#issuecomment-602132784
-        (self: super: {
+        (_self: super: {
           cabal2nix-unwrapped = super.haskell.lib.justStaticExecutables
             (super.haskellPackages.generateOptparseApplicativeCompletions [ "cabal2nix" ] super.haskell.packages."ghc982".cabal2nix);
         })

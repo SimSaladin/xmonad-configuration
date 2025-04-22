@@ -40,6 +40,7 @@ import           XMonad                    hiding (Font, title)
 import qualified XMonad.Actions.GridSelect as GS
 import qualified XMonad.Prompt             as XP
 import           XMonad.Prompt.FuzzyMatch  (fuzzyMatch, fuzzySort)
+import qualified XMonad.Util.Font          as XU.Font
 
 import qualified Data.Char                 as Char
 import           Data.Foldable
@@ -110,7 +111,8 @@ gsconfig1 = def
 
 xpConfig :: XP.XPConfig
 xpConfig = def
-  { XP.font                = show font2
+  { XP.font                = show (terminessNerd { fontSize = Just (PixelSize 24) })
+  -- { XP.font                = "-monotype-notosansm nfm-medium-r-normal--17-120-100-100-m-100-iso10646-1" -- 17 pixelsize
   , XP.bgColor             = colBase03
   , XP.fgColor             = colBase1
   , XP.fgHLight            = colBlue
