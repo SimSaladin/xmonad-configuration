@@ -122,7 +122,7 @@ createSB :: PerScreenSBParams -> X PerScreenSB
 createSB params@PerScreenSBParams{..} = io $ do
   hRef <- newIORef Nothing
   ((h, pID), fds) <- withNamedLogInputs sb_screen $ \fds -> do
-    sb <- spawnPipeIO $ xmobarRunExec sb_screen sb_rect sb_dpi fds
+    sb <- spawnPipeIO $ xmobarRunExec params fds
     return (sb, fds)
   writeIORef hRef (Just h)
   -- TODO: unnecessary?
@@ -200,42 +200,48 @@ sbarHackRef :: IORef (Map.Map ScreenId [ProcessID])
 sbarHackRef = unsafePerformIO (newIORef mempty)
 {-# NOINLINE sbarHackRef #-}
 
-xmobarRunExec :: ScreenId -> Rectangle -> Double -> Map.Map NamedLoggerId Posix.Fd -> IO ()
-xmobarRunExec screen sr dpi fds = do
-  binDir <- dataDir <$> io getDirectories
+-- | Start the subprocess for an xmobar instance.
+xmobarRunExec :: PerScreenSBParams -> Map.Map NamedLoggerId Posix.Fd -> IO ()
+xmobarRunExec ps fds = do
+  exe <- getExe
   rds <- mapM (fmap printFd . Posix.dup) fds
-  exec $ program (binDir ++ "/xmobar-run") [show screen, show sr, show dpi, show rds]
+  exec $ program exe [show (sb_screen ps), show (sb_rect ps), show (sb_dpi ps), show rds]
   where
+    getExe = io getDirectories >>= \dirs -> pure (dataDir dirs ++ "/xmobar-run")
     printFd :: Posix.Fd -> String
     printFd = printf "/dev/fd/%i" . fromEnum
 
 -- | The main of the xmobar-run executable
 xmobarRunMain :: ScreenId -> Rectangle -> Double -> Map.Map NamedLoggerId FilePath -> IO ()
-xmobarRunMain screen sr dpi rds = myXBConfig screen sr dpi rds >>= XB.xmobar
+xmobarRunMain sId sr dpi rds = do
+  trace $ printf "xmobar(%i): now starting %ix%i+%i+%i [DPI: %.1f]" (fromEnum sId) (rect_width sr) (rect_height sr) (rect_x sr) (rect_y sr) dpi
+  c <- myXBConfig sId sr dpi rds
+  trace $ printf "xmobar(%i): %s" (fromEnum sId) (show c)
+  XB.xmobar c
 
 terminate :: MonadIO m => ScreenId -> ProcessID -> m ()
 terminate sId pId = do
   catchIO $ do
-    terminateDelay Posix.sigTERM 1000000{-1s-} $
-      terminateDelay Posix.sigTERM 2000000{-2s-} $
-          terminateDelay Posix.sigKILL 100000{-0.1s-} $
-            trace $ printf "[StatusBar %i] ERROR: failed to terminate statusbar process even with KILL! (PID=%i)" (fromEnum sId) (fromEnum pId)
-
-  -- TODO unnecessary?
-  io . atomicModifyIORef sbarHackRef $ \xs -> (Map.adjustWithKey (\_ -> L.delete pId) sId xs, ()) -- insertWith (++) screen [pID] xs, h) -- \xs -> ((screen, pID) : xs, h)
-
-  trace $ printf "[StatusBar %i] Cleaned up statusbar (PID=%i)" (fromEnum sId) (fromEnum pId)
+    terminateDelay Posix.sigTERM 1000000{-1s-} cleanup $
+      terminateDelay Posix.sigTERM 2000000{-2s-} cleanup $
+          terminateDelay Posix.sigKILL 100000{-0.1s-} cleanup $
+            trace $ printf "[StatusBar %i]: ERROR: Failed to terminate statusbar process even with KILL! (PID=%i)" (fromEnum sId) (fromEnum pId)
     where
-      terminateDelay :: Posix.Signal -> Int -> IO () -> IO ()
-      terminateDelay signal delay onFail = do
-        trace $ printf "[StatusBar %i] Terminating with %i (PID=%i)" (fromEnum sId) (fromEnum signal) (fromEnum pId)
-        Posix.signalProcessGroup signal {-Posix.sigTERM-} pId
-        threadDelay delay -- 1000000 -- 1s
+      terminateDelay :: Posix.Signal -> Int -> IO () -> IO () -> IO ()
+      terminateDelay signal delay onSuccess onFail = do
+        trace $ printf "[StatusBar %i]: Attempting to terminate by signal: %i. (PID=%i)" (fromEnum sId) (fromEnum signal) (fromEnum pId)
+        Posix.signalProcessGroup signal pId
+        threadDelay delay
         r <- E.try @E.IOException $ Posix.getProcessStatus False{-block-} False{-stopped-} pId
         case r of
-          Left _         -> return () -- process already exited
-          Right (Just r) -> trace $ printf "[StatusBar %i] Terminated with %i (PID=%i) %s" (fromEnum sId) (fromEnum signal) (fromEnum pId) (show r)
-          Right Nothing  -> onFail
+          Right Nothing  -> onFail -- still alive
+          Right (Just r) -> do trace $ printf "[StatusBar %i]: Child process terminated: %s" (fromEnum sId) (show r)
+                               onSuccess
+          Left err       -> do trace $ printf "[StatusBar %i]: Failed to retrieve child process status (PID=%i): %s" (fromEnum sId) (fromEnum pId) (show err)
+                               onSuccess
+
+      -- TODO unnecessary?
+      cleanup = io . atomicModifyIORef sbarHackRef $ \xs -> (Map.adjustWithKey (\_ -> L.delete pId) sId xs, ())
 
 -- * XMobar Config
 
@@ -441,7 +447,7 @@ myXBConfig (S sid) sr dpi pipes = fromConfigB $
         ]
       }
 
--- * PP
+-- * XMonad reporting (PP)
 
 myFocusedPP :: PP
 myFocusedPP = def

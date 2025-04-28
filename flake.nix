@@ -68,9 +68,11 @@
             });
           };
 
-          xmobar = final.haskell.lib.overrideSrc hprev.xmobar {
+          xmobar = (final.haskell.lib.overrideSrc hprev.xmobar {
             src = xmobar;
             version = "dev-${xmobar.shortRev}";
+          }).overrideAttrs {
+            patches = [ ./xmobar-hidpi-auto-height.patch ];
           };
 
           # Patch null pointer exception causing segfault when font cannot be

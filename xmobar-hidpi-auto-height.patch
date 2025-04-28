@@ -1,0 +1,28 @@
+diff --git i/src/Xmobar/X11/Window.hs w/src/Xmobar/X11/Window.hs
+index 87d56f4..e8cd10d 100644
+--- i/src/Xmobar/X11/Window.hs
++++ w/src/Xmobar/X11/Window.hs
+@@ -54,8 +54,9 @@ createWin d fs c = do
+   srs <- Xi.getScreenInfo d
+   rootw <- X.rootWindow d dflt
+   (as,ds) <- Txt.textExtents fs "0"
+-  let ht = as + ds + 4
+-      r = setPosition c (T.position c) srs (fromIntegral ht)
++  let sf = T.dpi c / 96.0 -- determined height to be scaled by DPI
++      ht = fromIntegral (as + ds) * sf + 4
++      r = setPosition c (T.position c) srs (ceiling ht)
+   win <- newWindow  d (X.defaultScreenOfDisplay d) rootw r (T.overrideRedirect c)
+   setProperties c d win
+   setStruts r c d win srs
+@@ -68,8 +69,9 @@ repositionWin :: X.Display -> X.Window -> Txt.XFont -> T.Config -> IO X.Rectangl
+ repositionWin d win fs c = do
+   srs <- Xi.getScreenInfo d
+   (as,ds) <- Txt.textExtents fs "0"
+-  let ht = as + ds + 4
+-      r = setPosition c (T.position c) srs (fromIntegral ht)
++  let sf = T.dpi c / 96.0 -- determined height to be scaled by DPI
++      ht = fromIntegral (as + ds) * sf + 4
++      r = setPosition c (T.position c) srs (ceiling ht)
+   X.moveResizeWindow d win
+     (X.rect_x r) (X.rect_y r) (X.rect_width r) (X.rect_height r)
+   setStruts r c d win srs
