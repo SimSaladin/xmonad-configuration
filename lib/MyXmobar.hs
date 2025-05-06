@@ -216,7 +216,7 @@ xmobarRunMain :: ScreenId -> Rectangle -> Double -> Map.Map NamedLoggerId FilePa
 xmobarRunMain sId sr dpi rds = do
   trace $ printf "xmobar(%i): now starting %ix%i+%i+%i [DPI: %.1f]" (fromEnum sId) (rect_width sr) (rect_height sr) (rect_x sr) (rect_y sr) dpi
   c <- myXBConfig sId sr dpi rds
-  trace $ printf "xmobar(%i): %s" (fromEnum sId) (show c)
+  -- trace $ printf "xmobar(%i): %s" (fromEnum sId) (show c) -- XXX the output gets garbled somehow (buffering?)
   XB.xmobar c
 
 terminate :: MonadIO m => ScreenId -> ProcessID -> m ()
@@ -323,7 +323,7 @@ myXBConfig (S sid) sr dpi pipes = fromConfigB $
 
     kbdAndLocks = kbdB <> litB hairsp <> fgB colOrange locksB
 
-    btcPrice = comB "cat" ["/tmp/xmobar.ticker"]
+    btcPrice = comB "/usr/bin/env" ["OUT=/dev/stdout", "kraken_dzen"]
 
     dateFmt = sepByConcat puncsp [weeknum, weekday, daymonth, hourmin <> seconds, zone]
         where
