@@ -124,17 +124,17 @@
     "xmobar": {
       "flake": false,
       "locked": {
-        "lastModified": 1743527931,
-        "narHash": "sha256-bIcE2vsJoZPlDCkNKkymuQF4agPzZ4aN9c5RV/D2gNk=",
-        "ref": "refs/heads/master",
-        "rev": "3ac316ab1b468b97ef3230bd334a8b9b15fb80e1",
-        "revCount": 1928,
-        "type": "git",
-        "url": "https://codeberg.org/xmobar/xmobar"
+        "lastModified": 1750763037,
+        "narHash": "sha256-AiCitATYLFqJ0SUXe4YvYNO1WZ2SvvG/aq/tVTUkVB8=",
+        "owner": "SimSaladin",
+        "repo": "xmobar",
+        "rev": "2e11621193e3041f4bf3f8c231831f7a370f2983",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "https://codeberg.org/xmobar/xmobar"
+        "owner": "SimSaladin",
+        "repo": "xmobar",
+        "type": "github"
       }
     },
     "xmonad": {

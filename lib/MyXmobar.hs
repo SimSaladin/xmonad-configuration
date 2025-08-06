@@ -253,7 +253,7 @@ myFontSize = 7
 fonts :: [(String, String)]
 fonts =
  [ ("default", printf "NotoSans Nerd Font %.2f" myFontSize)
- , ("mono"   , printf "NotoMono Nerd Font %.2f" myFontSize)
+ , ("mono"   , printf "NotoMono Nerd Font %.2f" (myFontSize * 0.8))
  , ("tiny"   , printf "WenQuanYi Micro Hei %.2f" (myFontSize * 0.9))
  , ("cjk"    , printf "WenQuanYi Zen Hei %.2f" myFontSize)
  , ("noto-color-emoji", printf "Noto Color Emoji %.2f" myFontSize)
@@ -275,7 +275,7 @@ myXBConfig (S sid) sr dpi pipes = fromConfigB $
        , XB.dpi = dpi
        , XB.font = snd mainFont
        , XB.additionalFonts = map snd altFonts
-       , XB.textOffset = -1 -- negative to center vertically
+       , XB.textOffset = 0 -- negative to center vertically..?
        })
   <> pipeReaderB "xmonad" "/dev/fd/0"
   <> whenB (widthAtLeast 2500) (litB emspace <> mpdB mpdArgs 50)

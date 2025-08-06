@@ -35,7 +35,9 @@
     };
 
     xmobar = {
-      url = "git+https://codeberg.org/xmobar/xmobar";
+      #url = "git+https://codeberg.org/xmobar/xmobar";
+      url = "github:SimSaladin/xmobar";
+      #url = "path:/home/sim/xmobar";
       flake = false;
     };
   };
@@ -70,9 +72,9 @@
 
           xmobar = (final.haskell.lib.overrideSrc hprev.xmobar {
             src = xmobar;
-            version = "dev-${xmobar.shortRev}";
+            version = "dev-${xmobar.shortRev or "dirty"}";
           }).overrideAttrs {
-            patches = [ ./xmobar-hidpi-auto-height.patch ];
+            #patches = [ ./xmobar-hidpi-auto-height.patch ];
           };
 
           # Patch null pointer exception causing segfault when font cannot be
@@ -243,6 +245,11 @@
         let
           pkgs = import nixpkgs { inherit system overlays; };
           hp = pkgs.haskellPackages;
+          eachGHC = go: lib.fold (a: b: a // b) { } (lib.map
+            (ghcname:
+              lib.mapAttrs' (k: v: lib.nameValuePair "${ghcname}:${k}" v) (go pkgs.haskell.packages.${ghcname})
+            )
+            compilers);
         in
         {
           packages = with pkgs.haskell.lib.compose; {
@@ -258,6 +265,7 @@
               disableOptimization
               linkWithGold
             ];
+            xmobar = hp.xmobar;
           } // lib.fold (a: b: a // b) { } (lib.map
             (comp: {
               "${comp}/${pname}" = lib.pipe pkgs.haskell.packages.${comp}.${pname} [
@@ -282,22 +290,32 @@
             };
           };
 
-          devShells = {
-            minimal = hp.shellFor {
-              packages = p: [ p.xmonad ];
-              nativeBuildInputs = [ hp.hpack ];
-            };
-            default = hp.shellFor {
-              packages = p: [ p.${pname} ];
-              nativeBuildInputs = with hp; [ cabal-install hpack ];
-              #withHoogle = true;
-              inherit (self.checks.${system}.pre-commit-check) shellHook;
-            };
+          devShells =
+            let
+              mkDevShell = hp: hp.shellFor {
+                packages = hpkgs: [
+                  hpkgs.${pname}
+                  hpkgs.gtk3 # for pango(gtk2hs) testing
+                  hpkgs.pango # for xmobar
+                ];
+                nativeBuildInputs = with pkgs; [ cabal-install hpack ];
+                inherit (self.checks.${system}.pre-commit-check) shellHook;
+              };
+            in
+            {
+              default = mkDevShell hp;
 
-            pre-commit-check = pkgs.mkShellNoCC {
-              inherit (self.checks.${system}.pre-commit-check) shellHook;
-            };
-          };
+              minimal = hp.shellFor {
+                packages = p: [ p.xmonad p.xmonad-contrib ];
+                nativeBuildInputs = [ pkgs.hpack ];
+              };
+
+              pre-commit-check = pkgs.mkShellNoCC {
+                inherit (self.checks.${system}.pre-commit-check) shellHook;
+              };
+            } // eachGHC (hp: {
+              default = mkDevShell hp;
+            });
         }
       ) // {
       overlays = {

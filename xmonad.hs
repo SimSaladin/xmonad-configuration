@@ -420,9 +420,10 @@ myCmds = CF.hinted "Commands" $ \helpCmd -> do
     "M-r S-w" >+ windowPromptWithMinimized xpConfig ? "Maximize Hidden Window (Prompt)"
 
   group "Execute" $ do
-    "M-r r"            >+ spawnPrompt xpConfig "Execute"           ((\c -> spawnUnit def $ program (head c) (tail c)) . words)  ? "Execute (Prompt)"
+    "M-r r"            >+ spawnPrompt xpConfig "Execute"           (spawn . (\c -> program (head c) (tail c)) . words)  ? "Execute (Prompt)"
     "M-r S-r"          >+ spawnPrompt xpConfig "Execute (T)"       ((\c -> spawnDialog' $ program (head c) (tail c)) . words) ? "Execute (Prompt)"
-    "M-r <Return>"     >+ spawnPrompt xpConfig "Execute shell"     (spawnUnit def . shell)  ? "Execute shell (Prompt)"
+    "M-r M-r"          >+ spawnPrompt xpConfig "Execute (direct)"  (spawn . shell) ? "Execute (direct sh)"
+    "M-r <Return>"     >+ spawnPrompt xpConfig "Execute shell"     (spawn . shell) ? "Execute shell (Prompt)"
     "M-r S-<Return>"   >+ spawnPrompt xpConfig "Execute shell (T)" (spawnDialog' . shell) ? "Execute shell in terminal (Prompt)"
     "M-r c"            >+ spawn "clipmenu" ["-p", "clipmenu", "-i"] ? "clipmenu"
     "M-r b"            >+ spawnDialog "bluetoothctl" ? "bluetoothctl"
