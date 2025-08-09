@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-set -e
 
-cd "$(dirname "$0")" || exit 1
+set -euo pipefail
+
+cd "$(dirname "$0")"
 
 method=stack
 if [ -e BUILD_WITH_NIX ]; then
@@ -12,7 +13,7 @@ exe="xmonad-$(uname -m)-linux"
 flakeAttr=xmonad-configuration
 nixOut=result-build
 DEST=
-case $1 in
+case ${1-} in
 	''|--*) : ;;
 	*) DEST=$(realpath -ms "$1"); shift ;;
 esac
