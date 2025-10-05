@@ -52,4 +52,4 @@ qutebrowserCompl xpc =
     f = filter $ \x -> not
       $ ("-qutebrowser" `List.isSuffixOf` x)
       || ("." `List.isPrefixOf` x)
-      || (x `elem` ["null", "userscripts", "qtwebengine_dictionaries", "blocked-hosts"])
+      || (x `elem` ["null", "userscripts", "qtwebengine_dictionaries", "blocked-hosts", "greasemonkey", "qutebrowser"])
