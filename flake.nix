@@ -48,31 +48,24 @@
 
       pname = "xmonad-configuration";
 
-      allGhcVersions = lib.attrNames nixpkgs.legacyPackages.x86_64-linux.haskell.packages;
-      ghcVersion = "ghc9102"; # Default GHC version
-
-      # GHC versions' highest compatible LLVM versions
-      #llvmVersion = {
-      #  "ghc98" = 15; # Max LLVM version depends on GHC version.
-      #  "ghc9102" = 19;
-      #  "ghc9121" = 19;
-      #};
+      allGhcVersions = lib.subtractLists [ "ghc810" "ghc90" "ghc92" "ghcjs810" "ghcjs" "integer-simple" "native-bignum" ] (lib.attrNames nixpkgs.legacyPackages.x86_64-linux.haskell.packages);
 
       hoverlay = final: _prev: hself: hprev:
-        #let
-        #  compiler = lib.replaceStrings [ "-" "." ] [ "" "" ] hself.ghc.haskellCompilerName;
-        #in
+        let
+          #ghcVersion = lib.replaceStrings [ "-" "." ] [ "" "" ] hself.ghc.haskellCompilerName;
+          llvmPackages =
+            #if lib.versionAtLeast hself.ghc.version "9.10" then final.llvmPackages_19 # hself.ghc.llvmPackages # XXX: ?
+            if lib.versionAtLeast hself.ghc.version "9.10" then hself.ghc.llvmPackages
+            else final.llvmPackages_15;
+        in
         {
           ${pname} = hself.callCabal2nixWithOptions pname (git-ignore-nix.lib.gitignoreSource ./.) "--hpack" {
             mkDerivation = args: hprev.mkDerivation (args // {
               enableLibraryProfiling = false;
               enableSharedExecutables = true;
               buildTools = args.buildTools or [ ] ++ [
-                #final."llvmPackages_${toString (llvmVersion.${compiler})}".llvm
-                hself.ghc.llvmPackages.llvm
-                # Appears to be needed since GHC-9.10.1
-                #final."llvmPackages_${toString (llvmVersion.${compiler})}".clang
-                hself.ghc.llvmPackages.clang
+                llvmPackages.llvm
+                llvmPackages.clang # Appears to be needed since GHC-9.10.1
               ];
             });
           };
@@ -87,13 +80,14 @@
           # Patch null pointer exception causing segfault when font cannot be
           # loaded
           X11-xft = hprev.X11-xft.overrideAttrs (oa: {
-            patches = oa.patches or [ ] ++ [
+            # XXX weird unique needed
+            patches = lib.unique (oa.patches or [ ] ++ [
               (final.fetchpatch {
                 url = "https://github.com/xmonad/X11-xft/pull/21.diff";
                 hash = "sha256-Y7iSjU695jbgAvoqBLtIsWIFj4TFKMQ98R2visn0Z+0=";
                 postFetch = "sed -i -e '/X11-xft.cabal/,/author:/ d' $out";
               })
-            ];
+            ]);
           });
 
           #pango = final.haskell.lib.overrideSrc hprev.pango rec {
@@ -232,11 +226,7 @@
         };
 
       # For all GHC versions
-      fromHOL' = hov: lib.composeManyExtensions (lib.map (compiler: xmonad.lib.fromHOL hov { inherit compiler; }) allGhcVersions);
-
-      overlay = final: prev: fromHOL' hoverlay final prev // {
-        haskellPackages = final.haskell.packages.${ghcVersion};
-      };
+      fromHOL' = hov: lib.composeManyExtensions (lib.map (compiler: xmonad.lib.fromHOL hov { inherit compiler; }) (allGhcVersions));
 
       overlays = [
         # build cabal2nix with a different package set as suggested by https://github.com/NixOS/nixpkgs/issues/83098#issuecomment-602132784
@@ -246,16 +236,16 @@
         })
         (fromHOL' xmonad.hoverlay)
         (fromHOL' xmonad-contrib.hoverlay)
-        overlay
+        (fromHOL' hoverlay)
       ];
 
       perSystem = system:
         let
           pkgs = import nixpkgs { inherit system overlays; };
           hp = pkgs.haskellPackages;
-          eachGHC = go: lib.fold (a: b: a // b) { } (lib.map
+          eachGHC = f: lib.foldr (a: b: a // b) { } (lib.map
             (ghcname:
-              lib.mapAttrs' (k: v: lib.nameValuePair "${ghcname}:${k}" v) (go pkgs.haskell.packages.${ghcname})
+              lib.mapAttrs' (k: v: lib.nameValuePair "${ghcname}:${k}" v) (f pkgs.haskell.packages.${ghcname})
             )
             allGhcVersions);
           mkDevShell = hp: hp.shellFor {
@@ -319,15 +309,13 @@
           } // eachGHC (hp: {
             default = mkDevShell hp;
           });
+
+          inherit pkgs;
         };
     in
     flake-utils.lib.eachSystem [ "x86_64-linux" ] perSystem // {
       overlays = {
-        default = lib.composeManyExtensions [
-          overlay
-          (fromHOL' xmonad.hoverlay)
-          (fromHOL' xmonad-contrib.hoverlay)
-        ];
+        default = lib.composeManyExtensions overlays;
       };
       inherit hoverlay;
     };
